@@ -16,7 +16,7 @@
 - **Case:** C — AI Support Radar (VLearn)
 - **Nhóm:** 4 thành viên
 - **Nguồn evidence:** Day 17 — 2 learner interviews và 1 Lab Coach interview
-- **Trạng thái:** Đã chuẩn bị CP1 và CP2; chưa prototype test và chưa validated
+- **Trạng thái:** Đã chuẩn bị CP1, CP2; prototype A/B đã build và tự kiểm flow (CP3/CP4 một phần); chưa test với người thật và chưa validated
 
 ## Hypothesis Problem
 
@@ -28,9 +28,30 @@
 | --- | --- | --- |
 | CP1 — Evidence Continuity | [cp1-evidence-continuity.md](cp1-evidence-continuity.md) | Hoàn thành bản chuẩn bị |
 | CP2 — Meaningful Options | [three-option-design-sheet.md](three-option-design-sheet.md) | Hoàn thành bản chuẩn bị |
-| CP3 — Human Control | `human-ai-decision-table.md` | Chưa thực hiện |
-| CP4 — Test-ready | `prototype-links.md` | Chưa thực hiện |
-| CP5 — Learning | `group-feedback-synthesis.md` | Chưa thực hiện |
+| CP3 — Human Control | [human-ai-decision-table.md](human-ai-decision-table.md) | Tự kiểm xong cho A/B; C còn ở dạng thiết kế, chưa implement |
+| CP4 — Test-ready | [prototype-link.md](prototype-link.md) | Prototype A/B chạy được local; **chưa test với người thật** |
+| CP5 — Learning | `group-feedback-synthesis.md` | Chưa thực hiện — cần feedback thật trước khi điền |
+
+## Cách chạy prototype (Option A & B)
+
+Không cần build step, không cần backend, không cần cài package.
+
+```bash
+cd prototype
+# Cách 1: mở trực tiếp
+start index.html          # Windows
+# Cách 2: qua static server nếu trình duyệt chặn file://
+npx serve .
+```
+
+Chi tiết critical interaction của từng option xem tại [prototype-link.md](prototype-link.md).
+
+## Trạng thái triển khai Option A / B
+
+- **Option A — Coach Query:** Đã implement thành prototype (`prototype/`), tab "Option A". Coach chủ động chọn checkpoint và yêu cầu AI phân tích; AI không tự chạy trước khi có lệnh.
+- **Option B — AI Review Queue:** Đã implement thành prototype (`prototype/`), tab "Option B". AI tự tạo review queue kèm priority + uncertainty; coach review, chỉnh priority, approve/dismiss trước khi có bước hỗ trợ tiếp theo.
+- **Option C — Proactive Agent:** Chưa implement trong nhánh này (thuộc phần Loan/Nam Phương), vẫn ở trạng thái thiết kế từ CP2.
+- Cả A và B đã được tự chạy và kiểm tra toàn bộ flow (chọn/quét/mở case, đổi trạng thái, các nút hành động, back, reset) bằng smoke test nội bộ — **chưa có tester ngoài nhóm thao tác**, nên chưa thể tuyên bố Gate 4 (test-ready) đã pass theo nghĩa đầy đủ.
 
 ## Ba Solution Options
 
@@ -87,6 +108,11 @@ Track1_Day18_DuongBonMuaXuan/
 ├── cp1-evidence-continuity.md
 ├── three-option-design-sheet.md
 ├── human-ai-decision-table.md
+├── prototype/
+│   ├── index.html
+│   ├── styles.css
+│   ├── app.js
+│   └── data.js
 ├── prototype-link.md
 ├── prototype-feedback-note.md
 ├── group-feedback-synthesis.md
@@ -97,8 +123,8 @@ Track1_Day18_DuongBonMuaXuan/
 
 - [x] Gate 1 — Evidence Continuity
 - [x] Gate 2 — Meaningful Options
-- [ ] Gate 3 — Human Control
-- [ ] Gate 4 — Test-ready
-- [ ] Gate 5 — Learning, not praise
+- [x] Gate 3 — Human Control — tự kiểm xong cho Option A/B ([human-ai-decision-table.md](human-ai-decision-table.md)); Option C chưa implement nên chưa tự kiểm được.
+- [ ] Gate 4 — Test-ready — prototype A/B chạy được và đã tự kiểm toàn bộ flow, nhưng **chưa có người ngoài nhóm test**; chưa đủ điều kiện đánh dấu pass.
+- [ ] Gate 5 — Learning, not praise — chưa có feedback thật, chưa thể tổng hợp.
 
 > Gate 1 và Gate 2 hiện là tài liệu chuẩn bị dựa trên evidence Day 17. Trạng thái có thể được điều chỉnh sau khi coach review và sau khi nhóm prototype-test.

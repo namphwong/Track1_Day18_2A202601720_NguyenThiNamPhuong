@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Support Radar — Prototype A/B</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="class-banner">
+      <div class="class-banner-main">
+        <strong id="class-name"></strong>
+        <span id="class-task"></span>
+      </div>
+      <div class="class-banner-meta">
+        <span id="class-size"></span>
+        <span id="class-time"></span>
+      </div>
+    </div>
+    <div class="outcome-task">
+      Outcome task: <em>Hãy xác định một learner hoặc nhóm cần được ưu tiên hỗ trợ và quyết định bước hỗ trợ tiếp theo.</em>
+    </div>
+    <nav class="tab-bar">
+      <button class="tab-btn active" data-tab="A" id="tab-btn-A">Option A — Coach Query</button>
+      <button class="tab-btn" data-tab="B" id="tab-btn-B">Option B — AI Review Queue</button>
+      <button class="reset-btn" id="global-reset">↺ Reset về common context</button>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <!-- ============= OPTION A ============= -->
+    <section id="panel-A" class="option-panel">
+      <p class="mechanism-note">
+        <strong>Cơ chế Option A:</strong> AI chưa chạy gì. AI sẽ chỉ phân tích phạm vi bạn chọn, và chỉ khi bạn bấm yêu cầu.
+        AI không tự tạo queue toàn lớp và không tự liên hệ learner. Bạn giữ toàn bộ quyền quyết định.
+      </p>
+
+      <!-- State A1: Common context — checkpoint list -->
+      <div id="a-state-context" class="state-block">
+        <h2>1. Chọn checkpoint muốn kiểm tra</h2>
+        <div id="a-checkpoint-list" class="checkpoint-list"></div>
+        <button id="a-scan-btn" class="primary-btn" disabled>Kiểm tra nhóm đang chậm</button>
+      </div>
+
+      <!-- State A2: Critical interaction — scan result + evidence -->
+      <div id="a-state-scan" class="state-block hidden">
+        <h2>2. Kết quả kiểm tra — <span id="a-scan-checkpoint-name"></span></h2>
+        <p class="hint-text">AI chỉ liệt kê các nhóm đang dừng tại checkpoint này. Bấm vào một nhóm để xem evidence chi tiết trước khi quyết định.</p>
+        <div id="a-group-list" class="group-list"></div>
+        <div id="a-evidence-panel" class="evidence-panel hidden"></div>
+        <button class="link-btn" id="a-back-to-context">← Quay lại chọn checkpoint</button>
+      </div>
+
+      <!-- State A3: Result -->
+      <div id="a-state-result" class="state-block hidden">
+        <h2>3. Quyết định đã ghi nhận</h2>
+        <div id="a-result-summary" class="result-summary"></div>
+        <button class="link-btn" id="a-result-back">← Quay lại evidence</button>
+      </div>
+    </section>
+
+    <!-- ============= OPTION B ============= -->
+    <section id="panel-B" class="option-panel hidden">
+      <p class="mechanism-note">
+        <strong>Cơ chế Option B:</strong> AI đã tự động gom tín hiệu và tạo review queue bên dưới — bạn không cần chủ động
+        yêu cầu. AI xếp mức ưu tiên nhưng luôn giải thích evidence và nêu rõ chỗ chưa chắc chắn. AI <strong>không</strong>
+        liên hệ learner nào cho tới khi bạn approve.
+      </p>
+
+      <!-- State B1: Common context = AI-generated queue -->
+      <div id="b-state-queue" class="state-block">
+        <h2>1. Review queue do AI tạo tự động</h2>
+        <div id="b-queue-list" class="queue-list"></div>
+      </div>
+
+      <!-- State B2: Critical interaction — case detail -->
+      <div id="b-state-case" class="state-block hidden">
+        <h2>2. Chi tiết case — <span id="b-case-group-name"></span></h2>
+        <div id="b-case-priority-row" class="case-priority-row">
+          <label for="b-priority-select">Mức ưu tiên:</label>
+          <select id="b-priority-select">
+            <option value="Cao">Cao</option>
+            <option value="Trung bình">Trung bình</option>
+            <option value="Thấp">Thấp</option>
+          </select>
+          <span class="priority-hint">Coach có thể chỉnh lại mức AI đề xuất.</span>
+        </div>
+        <div id="b-evidence-panel" class="evidence-panel"></div>
+        <button class="link-btn" id="b-more-evidence-btn">+ Yêu cầu thêm evidence</button>
+        <div id="b-more-evidence-panel" class="more-evidence-panel hidden"></div>
+
+        <div class="case-actions">
+          <button class="primary-btn" data-result="support_now" id="b-support-now">Hỗ trợ ngay</button>
+          <button class="secondary-btn" data-result="schedule" id="b-schedule">Lên lịch / đưa vào queue</button>
+          <button class="dismiss-btn" data-result="dismiss" id="b-dismiss">Dismiss — chưa đủ evidence</button>
+        </div>
+        <button class="link-btn" id="b-back-to-queue">← Quay lại review queue</button>
+      </div>
+
+      <!-- State B3: Result -->
+      <div id="b-state-result" class="state-block hidden">
+        <h2>3. Quyết định đã ghi nhận</h2>
+        <div id="b-result-summary" class="result-summary"></div>
+        <button class="link-btn" id="b-result-back">← Quay lại case</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
