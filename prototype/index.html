@@ -3,179 +3,293 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Support Radar — Prototype A/B</title>
+  <meta name="color-scheme" content="dark light" />
+  <title>AI Support Radar — Prototype A/B/C</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="app-header">
-    <div class="class-banner">
-      <div class="class-banner-main">
-        <strong id="class-name"></strong>
-        <span id="class-task"></span>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-row">
+        <div class="ident">
+          <span class="ident-name" id="class-name"></span>
+          <span class="ident-task" id="class-task"></span>
+        </div>
+        <div class="ident-meta">
+          <span id="class-size"></span>
+          <span class="dot-sep" aria-hidden="true"></span>
+          <span id="class-time"></span>
+        </div>
       </div>
-      <div class="class-banner-meta">
-        <span id="class-size"></span>
-        <span id="class-time"></span>
+
+      <div class="topbar-row">
+        <nav class="tabs" role="tablist" aria-label="Ba option thiết kế">
+          <button class="tab" id="tab-btn-A" role="tab" aria-selected="true" aria-controls="panel-A">
+            <span class="tab-key" aria-hidden="true">A</span>
+            <span class="tab-label">Coach Query</span>
+          </button>
+          <button class="tab" id="tab-btn-B" role="tab" aria-selected="false" aria-controls="panel-B">
+            <span class="tab-key" aria-hidden="true">B</span>
+            <span class="tab-label">AI Review Queue</span>
+          </button>
+          <button class="tab" id="tab-btn-C" role="tab" aria-selected="false" aria-controls="panel-C">
+            <span class="tab-key" aria-hidden="true">C</span>
+            <span class="tab-label">Proactive Agent</span>
+          </button>
+        </nav>
+        <div class="topbar-actions">
+          <button class="btn btn-secondary theme-toggle" id="theme-toggle" aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
+            <svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+            <svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          </button>
+          <button class="btn btn-ghost" id="global-reset">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+            Reset về common context
+          </button>
+        </div>
       </div>
     </div>
-    <div class="outcome-task">
-      Outcome task: <em>Hãy xác định một learner hoặc nhóm cần được ưu tiên hỗ trợ và quyết định bước hỗ trợ tiếp theo.</em>
+
+    <div class="outcome">
+      <div class="outcome-inner">
+        <span class="overline">Outcome task</span>
+        <p>Hãy xác định một learner hoặc nhóm cần được ưu tiên hỗ trợ và quyết định bước hỗ trợ tiếp theo.</p>
+      </div>
     </div>
-    <nav class="tab-bar">
-      <button class="tab-btn active" data-tab="A" id="tab-btn-A">Option A — Coach Query</button>
-      <button class="tab-btn" data-tab="B" id="tab-btn-B">Option B — AI Review Queue</button>
-      <button class="tab-btn" data-tab="C" id="tab-btn-C">Option C — Proactive Agent</button>
-      <button class="reset-btn" id="global-reset">↺ Reset về common context</button>
-    </nav>
   </header>
 
   <main id="main-content">
-    <!-- ============= OPTION A ============= -->
-    <section id="panel-A" class="option-panel">
-      <p class="mechanism-note">
-        <strong>Cơ chế Option A:</strong> AI chưa chạy gì. AI sẽ chỉ phân tích phạm vi bạn chọn, và chỉ khi bạn bấm yêu cầu.
-        AI không tự tạo queue toàn lớp và không tự liên hệ learner. Bạn giữ toàn bộ quyền quyết định.
-      </p>
-
-      <!-- State A1: Common context — checkpoint list -->
-      <div id="a-state-context" class="state-block">
-        <h2>1. Chọn checkpoint muốn kiểm tra</h2>
-        <div id="a-checkpoint-list" class="checkpoint-list"></div>
-        <button id="a-scan-btn" class="primary-btn" disabled>Kiểm tra nhóm đang chậm</button>
+    <!-- ==================== OPTION A ==================== -->
+    <section id="panel-A" class="panel" role="tabpanel" aria-labelledby="tab-btn-A">
+      <div class="mech mech-a">
+        <span class="mech-tag">Cơ chế Option A</span>
+        <p class="mech-lead">AI chưa chạy gì. AI sẽ chỉ phân tích phạm vi bạn chọn, và chỉ khi bạn bấm yêu cầu.</p>
+        <details class="mech-more">
+          <summary>Chi tiết cơ chế</summary>
+          <p>AI không tự tạo queue toàn lớp và không tự liên hệ learner. Bạn giữ toàn bộ quyền quyết định.</p>
+        </details>
       </div>
 
-      <!-- State A2: Critical interaction — scan result + evidence -->
-      <div id="a-state-scan" class="state-block hidden">
-        <h2>2. Kết quả kiểm tra — <span id="a-scan-checkpoint-name"></span></h2>
-        <p class="hint-text">AI chỉ liệt kê các nhóm đang dừng tại checkpoint này. Bấm vào một nhóm để xem evidence chi tiết trước khi quyết định.</p>
-        <div id="a-group-list" class="group-list"></div>
-        <div id="a-evidence-panel" class="evidence-panel hidden"></div>
-        <button class="link-btn" id="a-back-to-context">← Quay lại chọn checkpoint</button>
+      <!-- A1: common context -->
+      <div id="a-state-context" class="state">
+        <div class="state-head">
+          <span class="step">Bước 1 / 3</span>
+          <h2>Chọn checkpoint muốn kiểm tra</h2>
+        </div>
+        <div id="a-checkpoint-list" class="cp-grid"></div>
+        <div class="state-foot">
+          <button id="a-scan-btn" class="btn btn-primary" disabled>Kiểm tra nhóm đang chậm</button>
+          <span class="foot-hint">Chọn một checkpoint để bật nút này.</span>
+        </div>
       </div>
 
-      <!-- State A3: Result -->
-      <div id="a-state-result" class="state-block hidden">
-        <h2>3. Quyết định đã ghi nhận</h2>
-        <div id="a-result-summary" class="result-summary"></div>
-        <button class="link-btn" id="a-result-back">← Quay lại evidence</button>
+      <!-- A2: critical interaction -->
+      <div id="a-state-scan" class="state hidden">
+        <div class="state-head">
+          <button class="btn btn-back" id="a-back-to-context">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            Chọn checkpoint
+          </button>
+          <span class="step">Bước 2 / 3</span>
+          <h2>Kết quả kiểm tra — <span id="a-scan-checkpoint-name"></span></h2>
+        </div>
+        <div id="a-situation" class="stats"></div>
+        <p class="hint">AI chỉ liệt kê các nhóm đang dừng tại checkpoint này. Bấm vào một nhóm để xem evidence chi tiết trước khi quyết định.</p>
+        <div class="split mt-16">
+          <div id="a-group-list" class="case-list"></div>
+          <div id="a-evidence-panel"></div>
+        </div>
+      </div>
+
+      <!-- A3: result -->
+      <div id="a-state-result" class="state hidden">
+        <div class="state-head">
+          <button class="btn btn-back" id="a-result-back">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            Quay lại evidence
+          </button>
+          <span class="step">Bước 3 / 3</span>
+          <h2>Quyết định đã ghi nhận</h2>
+        </div>
+        <div id="a-result-summary" class="result"></div>
       </div>
     </section>
 
-    <!-- ============= OPTION B ============= -->
-    <section id="panel-B" class="option-panel hidden">
-      <p class="mechanism-note">
-        <strong>Cơ chế Option B:</strong> AI đã tự động gom tín hiệu và tạo review queue bên dưới — bạn không cần chủ động
-        yêu cầu. AI xếp mức ưu tiên nhưng luôn giải thích evidence và nêu rõ chỗ chưa chắc chắn. AI <strong>không</strong>
-        liên hệ learner nào cho tới khi bạn approve.
-      </p>
-
-      <!-- State B1: Common context = AI-generated queue -->
-      <div id="b-state-queue" class="state-block">
-        <h2>1. Review queue do AI tạo tự động</h2>
-        <div id="b-queue-list" class="queue-list"></div>
+    <!-- ==================== OPTION B ==================== -->
+    <section id="panel-B" class="panel hidden" role="tabpanel" aria-labelledby="tab-btn-B">
+      <div class="mech mech-b">
+        <span class="mech-tag">Cơ chế Option B</span>
+        <p class="mech-lead">AI đã tự động gom tín hiệu và tạo review queue bên dưới — bạn không cần chủ động yêu cầu.</p>
+        <details class="mech-more">
+          <summary>Chi tiết cơ chế</summary>
+          <p>AI xếp mức ưu tiên nhưng luôn giải thích evidence và nêu rõ chỗ chưa chắc chắn. AI <strong>không</strong> liên hệ learner nào cho tới khi bạn approve.</p>
+        </details>
       </div>
 
-      <!-- State B2: Critical interaction — case detail -->
-      <div id="b-state-case" class="state-block hidden">
-        <h2>2. Chi tiết case — <span id="b-case-group-name"></span></h2>
-        <div id="b-case-priority-row" class="case-priority-row">
-          <label for="b-priority-select">Mức ưu tiên:</label>
-          <select id="b-priority-select">
-            <option value="Cao">Cao</option>
-            <option value="Trung bình">Trung bình</option>
-            <option value="Thấp">Thấp</option>
-          </select>
-          <span class="priority-hint">Coach có thể chỉnh lại mức AI đề xuất.</span>
+      <!-- B1: common context -->
+      <div id="b-state-queue" class="state">
+        <div class="state-head">
+          <span class="step">Bước 1 / 3</span>
+          <h2>Review queue do AI tạo tự động</h2>
         </div>
-        <div id="b-evidence-panel" class="evidence-panel"></div>
-        <button class="link-btn" id="b-more-evidence-btn">+ Yêu cầu thêm evidence</button>
-        <div id="b-more-evidence-panel" class="more-evidence-panel hidden"></div>
-
-        <div class="case-actions">
-          <button class="primary-btn" data-result="support_now" id="b-support-now">Hỗ trợ ngay</button>
-          <button class="secondary-btn" data-result="schedule" id="b-schedule">Lên lịch / đưa vào queue</button>
-          <button class="dismiss-btn" data-result="dismiss" id="b-dismiss">Dismiss — chưa đủ evidence</button>
-        </div>
-        <button class="link-btn" id="b-back-to-queue">← Quay lại review queue</button>
+        <div id="b-situation" class="stats"></div>
+        <div id="b-queue-list" class="case-list"></div>
       </div>
 
-      <!-- State B3: Result -->
-      <div id="b-state-result" class="state-block hidden">
-        <h2>3. Quyết định đã ghi nhận</h2>
-        <div id="b-result-summary" class="result-summary"></div>
-        <button class="link-btn" id="b-result-back">← Quay lại case</button>
+      <!-- B2: critical interaction -->
+      <div id="b-state-case" class="state hidden">
+        <div class="state-head">
+          <button class="btn btn-back" id="b-back-to-queue">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            Review queue
+          </button>
+          <span class="step">Bước 2 / 3</span>
+          <h2>Chi tiết case — <span id="b-case-group-name"></span></h2>
+        </div>
+        <div class="caseview">
+          <div class="caseview-main">
+            <div id="b-evidence-panel"></div>
+            <button class="btn btn-quiet" id="b-more-evidence-btn">+ Yêu cầu thêm evidence</button>
+            <div id="b-more-evidence-panel" class="more-evidence hidden"></div>
+          </div>
+          <aside class="caseview-side">
+            <div class="rail">
+              <span class="overline">Quyết định của bạn</span>
+              <div class="rail-field">
+                <label for="b-priority-select">Mức ưu tiên</label>
+                <select id="b-priority-select">
+                  <option value="Cao">Cao</option>
+                  <option value="Trung bình">Trung bình</option>
+                  <option value="Thấp">Thấp</option>
+                </select>
+                <p class="rail-hint">Coach có thể chỉnh lại mức AI đề xuất.</p>
+              </div>
+              <div class="rail-actions">
+                <button class="btn btn-decide decide-go" data-result="support_now" id="b-support-now">Hỗ trợ ngay</button>
+                <button class="btn btn-decide decide-info" data-result="schedule" id="b-schedule">Lên lịch / đưa vào queue</button>
+                <button class="btn btn-decide decide-calm" data-result="dismiss" id="b-dismiss">Dismiss — chưa đủ evidence</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- B3: result -->
+      <div id="b-state-result" class="state hidden">
+        <div class="state-head">
+          <button class="btn btn-back" id="b-result-back">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            Quay lại case
+          </button>
+          <span class="step">Bước 3 / 3</span>
+          <h2>Quyết định đã ghi nhận</h2>
+        </div>
+        <div id="b-result-summary" class="result"></div>
       </div>
     </section>
 
-    <!-- ============= OPTION C ============= -->
-    <section id="panel-C" class="option-panel hidden">
-      <p class="mechanism-note">
-        <strong>Cơ chế Option C:</strong> AI được phép <strong>tự hành động (Act)</strong> với check-in rủi ro thấp, có thể
-        thu hồi, trong giới hạn policy — kể cả <strong>trước khi bạn mở tab này</strong>. Khi learner đã chủ động lên tiếng
-        hoặc evidence mâu thuẫn, AI <strong>không tự trả lời</strong> mà chuyển thẳng cho bạn (Ask). AI không bao giờ tự
-        đóng case của một learner cụ thể — chỉ bạn mới được đóng case đó.
-      </p>
+    <!-- ==================== OPTION C ==================== -->
+    <section id="panel-C" class="panel hidden" role="tabpanel" aria-labelledby="tab-btn-C">
+      <div class="mech mech-c">
+        <span class="mech-tag">Cơ chế Option C</span>
+        <p class="mech-lead">AI được phép <strong>tự hành động (Act)</strong> với check-in rủi ro thấp, có thể thu hồi, trong giới hạn policy — kể cả <strong>trước khi bạn mở tab này</strong>.</p>
+        <details class="mech-more">
+          <summary>Chi tiết cơ chế</summary>
+          <p>Khi learner đã chủ động lên tiếng hoặc evidence mâu thuẫn, AI <strong>không tự trả lời</strong> mà chuyển thẳng cho bạn (Ask). AI không bao giờ tự đóng case của một learner cụ thể — chỉ bạn mới được đóng case đó.</p>
+        </details>
+      </div>
 
-      <!-- State C1: Common context — policy + audit log những gì AI đã tự làm -->
-      <div id="c-state-context" class="state-block">
-        <h2>1. Policy hiện tại &amp; nhật ký hành động của AI</h2>
-        <div class="policy-panel">
-          <div class="policy-rule policy-rule-act">
-            <strong>AI được tự Act khi:</strong>
-            <span id="c-policy-act-rule"></span>
+      <!-- C1: common context -->
+      <div id="c-state-context" class="state">
+        <div class="state-head">
+          <span class="step">Bước 1 / 3</span>
+          <h2>Policy hiện tại &amp; nhật ký hành động của AI</h2>
+        </div>
+
+        <div id="c-situation" class="stats"></div>
+
+        <div class="policy-grid">
+          <div class="policy-card policy-act">
+            <span class="overline">AI được tự Act khi</span>
+            <div id="c-policy-act-rule"></div>
           </div>
-          <div class="policy-rule policy-rule-ask">
-            <strong>AI luôn Ask / chuyển coach khi:</strong>
-            <span id="c-policy-ask-rule"></span>
+          <div class="policy-card policy-ask">
+            <span class="overline">AI luôn Ask / chuyển coach khi</span>
+            <div id="c-policy-ask-rule"></div>
           </div>
         </div>
-        <ul class="guardrail-list" id="c-guardrail-list"></ul>
 
-        <label class="toggle-row">
+        <details class="guardrails">
+          <summary>Guardrail đang áp dụng</summary>
+          <ul id="c-guardrail-list"></ul>
+        </details>
+
+        <label class="switch">
           <input type="checkbox" id="c-pause-toggle" />
-          Tạm dừng toàn bộ hành động tự động của AI (policy-level stop)
+          <span>Tạm dừng toàn bộ hành động tự động của AI (policy-level stop)</span>
         </label>
 
-        <h3 class="activity-heading">Nhật ký hành động (audit log) — mới nhất trước</h3>
-        <p class="hint-text">Đây là những gì AI đã tự làm hoặc tự quyết định không làm, trước khi bạn xem qua từng case.</p>
-        <div id="c-activity-list" class="activity-feed"></div>
+        <div class="state-head state-head-sub">
+          <h2>Nhật ký hành động (audit log)</h2>
+          <span class="step">mới nhất trước</span>
+        </div>
+        <p class="hint">Đây là những gì AI đã tự làm hoặc tự quyết định không làm, trước khi bạn xem qua từng case.</p>
+        <div id="c-activity-list" class="timeline"></div>
       </div>
 
-      <!-- State C2: Critical interaction — case detail, khác nhau theo loại hành động -->
-      <div id="c-state-case" class="state-block hidden">
-        <h2>2. Chi tiết case — <span id="c-case-group-name"></span></h2>
-        <div id="c-ai-action-box" class="ai-action-box"></div>
-        <div id="c-evidence-panel" class="evidence-panel"></div>
-
-        <div id="c-simulate-block" class="simulate-block hidden">
-          <p class="hint-text"><em>Mô phỏng để test (không phải phản hồi thật): learner sẽ trả lời check-in thế nào?</em></p>
-          <div class="simulate-row">
-            <button class="secondary-btn" id="c-sim-yes">Mô phỏng: Learner nói "Cần trợ giúp"</button>
-            <button class="dismiss-btn" id="c-sim-no">Mô phỏng: Learner nói "Không cần, cảm ơn"</button>
+      <!-- C2: critical interaction -->
+      <div id="c-state-case" class="state hidden">
+        <div class="state-head">
+          <button class="btn btn-back" id="c-back-to-context">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            Policy &amp; nhật ký
+          </button>
+          <span class="step">Bước 2 / 3</span>
+          <h2>Chi tiết case — <span id="c-case-group-name"></span></h2>
+        </div>
+        <div class="caseview">
+          <div class="caseview-main">
+            <div id="c-ai-action-box"></div>
+            <div id="c-evidence-panel"></div>
+            <div id="c-simulate-block" class="simulate hidden">
+              <span class="overline">Mô phỏng để test</span>
+              <p class="hint mt-4">Không phải phản hồi thật: learner sẽ trả lời check-in thế nào?</p>
+              <div class="simulate-row">
+                <button class="btn btn-secondary" id="c-sim-yes">Learner nói "Cần trợ giúp"</button>
+                <button class="btn btn-secondary" id="c-sim-no">Learner nói "Không cần, cảm ơn"</button>
+              </div>
+            </div>
+            <div id="c-post-sim-note" class="note-box hidden"></div>
           </div>
+          <aside class="caseview-side">
+            <div class="rail">
+              <span class="overline">Quyết định của bạn</span>
+              <div class="rail-actions" id="c-manual-actions">
+                <button class="btn btn-decide decide-go" data-result="support_now" id="c-support-now">Hỗ trợ ngay</button>
+                <button class="btn btn-decide decide-info" data-result="schedule" id="c-schedule">Lên lịch / đưa vào queue</button>
+                <button class="btn btn-decide decide-calm" data-result="dismiss" id="c-dismiss">Bỏ qua — chưa đủ evidence</button>
+              </div>
+              <p class="rail-hint" id="c-rail-hint"></p>
+            </div>
+            <label class="switch" id="c-optout-row">
+              <input type="checkbox" id="c-optout-toggle" />
+              <span>Tắt hành động/theo dõi chủ động của AI cho nhóm này</span>
+            </label>
+          </aside>
         </div>
-
-        <div id="c-post-sim-note" class="case-note hidden"></div>
-
-        <div id="c-manual-actions" class="case-actions hidden">
-          <button class="primary-btn" data-result="support_now" id="c-support-now">Hỗ trợ ngay</button>
-          <button class="secondary-btn" data-result="schedule" id="c-schedule">Lên lịch / đưa vào queue</button>
-          <button class="dismiss-btn" data-result="dismiss" id="c-dismiss">Bỏ qua — chưa đủ evidence</button>
-        </div>
-
-        <label class="toggle-row" id="c-optout-row">
-          <input type="checkbox" id="c-optout-toggle" />
-          Tắt hành động/theo dõi chủ động của AI cho nhóm này
-        </label>
-
-        <button class="link-btn" id="c-back-to-context">← Quay lại policy &amp; nhật ký</button>
       </div>
 
-      <!-- State C3: Result -->
-      <div id="c-state-result" class="state-block hidden">
-        <h2>3. Quyết định đã ghi nhận</h2>
-        <div id="c-result-summary" class="result-summary"></div>
-        <button class="link-btn" id="c-result-back">← Quay lại case</button>
+      <!-- C3: result -->
+      <div id="c-state-result" class="state hidden">
+        <div class="state-head">
+          <button class="btn btn-back" id="c-result-back">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            Quay lại case
+          </button>
+          <span class="step">Bước 3 / 3</span>
+          <h2>Quyết định đã ghi nhận</h2>
+        </div>
+        <div id="c-result-summary" class="result"></div>
       </div>
     </section>
   </main>

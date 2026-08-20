@@ -1,4 +1,4 @@
-// data.js — Data fixture dùng chung cho Option A và Option B.
+// data.js — Data fixture dùng chung cho Option A, Option B và Option C.
 // Đây là dữ liệu cố định (canned), không gọi model AI thật.
 
 const CLASS_CONTEXT = {
@@ -190,6 +190,29 @@ function getInitialProactiveLog() {
     },
   ];
 }
+
+// Cùng nội dung với POLICY_C.autoActRule / alwaysEscalateRule ở trên, nhưng
+// tách sẵn thành lead + từng điều kiện để hiển thị dạng bullet cho coach quét
+// nhanh. KHÔNG đổi một chữ nào: ghép lead + conditions bằng dấu cách phải ra
+// đúng chuỗi gốc — smoke test kiểm tra điều này để tránh trôi nội dung.
+const POLICY_C_BULLETS = {
+  autoAct: {
+    lead: "Được phép tự động gửi một check-in trung tính (không kết luận, không đánh giá) nếu:",
+    conditions: [
+      "nhóm dừng lâu bất thường so với trung vị lớp",
+      "VÀ có tín hiệu hành vi bất thường khác,",
+      "NHƯNG chưa có ai trong nhóm chủ động liên hệ coach.",
+    ],
+  },
+  alwaysEscalate: {
+    lead: "Luôn chuyển thẳng cho coach xử lý, AI không tự soạn hay gửi phản hồi thay — khi:",
+    conditions: [
+      "learner/nhóm đã chủ động gửi yêu cầu trợ giúp,",
+      "evidence mâu thuẫn nhau đến mức AI không phân biệt được nguyên nhân,",
+      "hoặc hành động có ảnh hưởng lớn tới trải nghiệm learner.",
+    ],
+  },
+};
 
 const ACTIVITY_TYPE_LABEL = {
   auto_checkin: "AI đã hành động (Act)",

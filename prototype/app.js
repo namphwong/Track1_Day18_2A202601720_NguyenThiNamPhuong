@@ -1,23 +1,222 @@
-// app.js — Logic cho Option A (Coach Query) và Option B (AI Review Queue).
+// app.js — Logic cho Option A (Coach Query), Option B (AI Review Queue)
+// và Option C (Proactive Agent).
 // Không gọi model AI thật. Toàn bộ "phân tích" đọc từ data.js (canned fixture).
 
 const PRIORITY_CLASS = { "Cao": "priority-high", "Trung bình": "priority-mid", "Thấp": "priority-low" };
 
+// Tone chỉ là gợi ý TRÌNH BÀY để ba nhóm phân biệt được bằng mắt — KHÔNG phải
+// mức độ chắc chắn của evidence và không phải kết luận của AI. Mọi giới hạn của
+// evidence vẫn nằm nguyên trong note/uncertainty của từng tín hiệu.
+const GROUP_TONE = {
+  "group-07": "tone-warning",
+  "group-09": "tone-accent",
+  "group-03": "tone-calm",
+};
+
+const ACTIVITY_TONE = {
+  auto_checkin: "tone-success",
+  escalate_direct: "tone-warning",
+  monitor: "tone-calm",
+  coach_decision: "tone-accent",
+  undo: "tone-danger",
+  policy_change: "tone-calm",
+};
+
+// Quyết định cố định của AI cho từng nhóm ở Option C (dùng cho situation strip).
+const C_AI_DECISION = {
+  "group-07": "auto_checkin",
+  "group-09": "escalate_direct",
+  "group-03": "monitor",
+};
+
+const esc = (s) =>
+  String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const groupById = (id) => GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === id);
+
+// ---------- Theme ----------
+// Mặc định theo cài đặt hệ điều hành; coach bấm nút để ghi đè. Lưu lựa chọn
+// nếu localStorage dùng được — mở bằng file:// có thể bị chặn, không sao.
+const THEME_KEY = "asr-theme";
+
+function prefersLight() {
+  // matchMedia vắng mặt ở vài môi trường (jsdom, browser rất cũ) — coi như tối.
+  return (
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-color-scheme: light)").matches
+  );
+}
+
+function currentTheme() {
+  const forced = document.documentElement.getAttribute("data-theme");
+  if (forced === "light" || forced === "dark") return forced;
+  return prefersLight() ? "light" : "dark";
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch (e) {
+    /* file:// có thể chặn localStorage — chỉ mất việc nhớ lựa chọn */
+  }
+}
+
+function initTheme() {
+  let saved = null;
+  try {
+    saved = localStorage.getItem(THEME_KEY);
+  } catch (e) {
+    /* bỏ qua */
+  }
+  if (saved === "light" || saved === "dark") {
+    document.documentElement.setAttribute("data-theme", saved);
+  }
+}
+
+// ---------- Prose → bullets ----------
+// Tách một đoạn thành từng câu để coach quét nhanh thay vì đọc khối chữ.
+// CHỈ đổi cách xuống dòng, không đổi chữ: ghép các phần lại bằng một dấu
+// cách phải ra đúng chuỗi gốc (smoke test kiểm tra điều này).
+function sentenceBullets(text) {
+  // Cắt sau dấu chấm, và trước dấu gạch ngang — vế sau gạch ngang gần như
+  // luôn là một ý riêng ("... — không thể suy ra chắc chắn ..."). Cả hai chỗ
+  // cắt đều nuốt đúng khoảng trắng, nên ghép lại bằng " " ra đúng chuỗi gốc.
+  const parts = String(text)
+    .split(/(?<=\.)\s+|\s+(?=—\s)/)
+    .filter(Boolean);
+  return parts.length > 1 ? parts : [];
+}
+
+// Nhiều câu → <ul> bullet. Một câu → thẻ thường, vì bullet đơn lẻ vô nghĩa.
+function proseHTML(text, { tag = "p", cls = "", bulletCls = "bullets" } = {}) {
+  const items = sentenceBullets(text);
+  if (!items.length) return `<${tag} class="${cls}">${esc(text)}</${tag}>`;
+  // Bỏ dấu gạch ngang mở đầu khi hiển thị — nó chỉ cần khi các vế nối liền.
+  return `<ul class="${bulletCls}">${items
+    .map((i) => `<li>${esc(i.replace(/^—\s*/, ""))}</li>`)
+    .join("")}</ul>`;
+}
+
+// Quy tắc policy dạng lead + danh sách điều kiện. Bỏ dấu phẩy/chấm cuối mỗi
+// điều kiện khi hiển thị — dấu câu chỉ cần khi các vế nối thành một câu.
+function ruleBulletsHTML(part) {
+  return `
+    <p class="rule-lead">${esc(part.lead)}</p>
+    <ul class="bullets bullets-md">
+      ${part.conditions.map((c) => `<li>${esc(c.replace(/[,.]$/, ""))}</li>`).join("")}
+    </ul>`;
+}
+
 // ---------- Shared header ----------
 function renderClassBanner() {
   document.getElementById("class-name").textContent = CLASS_CONTEXT.className;
-  document.getElementById("class-task").textContent = " — " + CLASS_CONTEXT.task;
+  document.getElementById("class-task").textContent = CLASS_CONTEXT.task;
   document.getElementById("class-size").textContent =
     `${CLASS_CONTEXT.totalLearners} learner · ${CLASS_CONTEXT.totalGroups} nhóm`;
   document.getElementById("class-time").textContent =
     `Bắt đầu ${CLASS_CONTEXT.sessionStarted} · Hiện tại ${CLASS_CONTEXT.now}`;
 }
 
+// ---------- Shared components ----------
+
+function statHTML(label, value, note, tone) {
+  return `
+    <div class="stat ${tone ? "stat-tone-" + tone : ""}">
+      <span class="stat-label">${esc(label)}</span>
+      <span class="stat-value">${esc(value)}</span>
+      <span class="stat-note">${esc(note)}</span>
+    </div>`;
+}
+
+// Tất cả số liệu dưới đây được suy ra từ data fixture đã có, không thêm dữ liệu mới.
+function installCheckpointFacts() {
+  const groups = GROUPS_AT_INSTALL_CHECKPOINT;
+  const cp = CHECKPOINTS.find((c) => c.id === "cp-install");
+  const slowest = groups.slice().sort((a, b) => b.stalledMinutes - a.stalledMinutes)[0];
+  const asked = groups.filter((g) => g.helpRequested);
+  return { groups, cp, slowest, asked };
+}
+
+function renderSituationStripA() {
+  const { groups, cp, slowest, asked } = installCheckpointFacts();
+  document.getElementById("a-situation").innerHTML =
+    statHTML("Nhóm đang dừng", String(groups.length), "tại " + cp.name.split(" — ")[0], null) +
+    statHTML("Dừng lâu nhất", slowest.name, `${slowest.stalledMinutes} phút`, "warning") +
+    statHTML(
+      "Đã xin trợ giúp",
+      String(asked.length),
+      asked.length ? asked.map((g) => g.name).join(", ") : "chưa nhóm nào",
+      asked.length ? "accent" : null
+    ) +
+    statHTML("Trung vị lớp", `${cp.medianMinutesToPass} phút`, "thời gian qua checkpoint", null);
+}
+
+function renderSituationStripB() {
+  const { groups, cp, asked } = installCheckpointFacts();
+  const high = Object.values(AI_QUEUE_SUGGESTION).filter((s) => s.priority === "Cao").length;
+  document.getElementById("b-situation").innerHTML =
+    statHTML("Case trong queue", String(groups.length), "do AI tự tạo", null) +
+    statHTML("AI đề xuất ưu tiên Cao", String(high), "cần coach xem trước", "warning") +
+    statHTML(
+      "Đã xin trợ giúp",
+      String(asked.length),
+      asked.length ? asked.map((g) => g.name).join(", ") : "chưa nhóm nào",
+      asked.length ? "accent" : null
+    ) +
+    statHTML("Trung vị lớp", `${cp.medianMinutesToPass} phút`, "thời gian qua checkpoint", null);
+}
+
+function renderSituationStripC() {
+  const counts = { auto_checkin: 0, escalate_direct: 0, monitor: 0 };
+  Object.values(C_AI_DECISION).forEach((t) => (counts[t] += 1));
+  document.getElementById("c-situation").innerHTML =
+    statHTML("Nhóm AI đang theo dõi", String(Object.keys(C_AI_DECISION).length), "tại Checkpoint 1", null) +
+    statHTML("AI đã tự hành động", String(counts.auto_checkin), "check-in đã gửi (Act)", "success") +
+    statHTML("AI chuyển cho coach", String(counts.escalate_direct), "không tự trả lời (Ask)", "warning") +
+    statHTML("Chỉ theo dõi", String(counts.monitor), "không hành động (Don't Act)", null);
+}
+
+function chipsHTML(g) {
+  return `
+    <div class="chips">
+      <span class="chip">Dừng ${g.stalledMinutes} phút</span>
+      <span class="chip ${g.helpRequested ? "chip-accent" : ""}">${
+        g.helpRequested ? "Đã xin trợ giúp" : "Chưa xin trợ giúp"
+      }</span>
+      <span class="chip">Mở tài liệu ${g.docsReopened} lần</span>
+    </div>`;
+}
+
+function evidenceHTML(groupId, heading) {
+  const ev = EVIDENCE_BY_GROUP[groupId];
+  return `
+    <div class="evidence">
+      <h3>${esc(heading)}</h3>
+      <div class="metrics">
+        ${ev.signals
+          .map(
+            (s) => `
+          <div class="metric">
+            <span class="metric-label">${esc(s.label)}</span>
+            <span class="metric-value">${esc(s.value)}</span>
+            ${proseHTML(s.note, { tag: "span", cls: "metric-note" })}
+          </div>`
+          )
+          .join("")}
+      </div>
+      <div class="uncertainty">
+        <span class="overline">Mức độ chắc chắn của evidence</span>
+        ${proseHTML(ev.uncertainty, { bulletCls: "bullets bullets-md" })}
+      </div>
+    </div>`;
+}
+
 // ---------- Tabs ----------
 function switchTab(tab) {
   ["A", "B", "C"].forEach((t) => {
     document.getElementById("panel-" + t).classList.toggle("hidden", tab !== t);
-    document.getElementById("tab-btn-" + t).classList.toggle("active", tab === t);
+    document.getElementById("tab-btn-" + t).setAttribute("aria-selected", String(tab === t));
   });
 }
 
@@ -42,10 +241,14 @@ function renderCheckpointList() {
   const list = document.getElementById("a-checkpoint-list");
   list.innerHTML = "";
   CHECKPOINTS.forEach((cp) => {
-    const card = document.createElement("div");
-    card.className = "checkpoint-card" + (aSelectedCheckpoint === cp.id ? " selected" : "");
+    const pct = cp.groupsTotal ? Math.round((cp.groupsPassed / cp.groupsTotal) * 100) : 0;
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "cp-card";
+    card.setAttribute("aria-pressed", String(aSelectedCheckpoint === cp.id));
     card.innerHTML = `
-      <span class="cp-name">${cp.name}</span>
+      <span class="cp-name">${esc(cp.name)}</span>
+      <span class="cp-bar"><span style="width:${pct}%"></span></span>
       <span class="cp-stats">${cp.groupsPassed}/${cp.groupsTotal} nhóm đã qua · ${cp.groupsInProgress} đang làm</span>
     `;
     card.addEventListener("click", () => {
@@ -70,24 +273,30 @@ function runOptionAScan() {
   const list = document.getElementById("a-group-list");
   list.innerHTML = "";
 
+  const situation = document.getElementById("a-situation");
   if (groups.length === 0) {
-    list.innerHTML = `<p class="hint-text">Không có nhóm nào đang dừng lâu bất thường tại checkpoint này ngay lúc này.</p>`;
+    situation.classList.add("hidden");
+    list.innerHTML = `<p class="hint">Không có nhóm nào đang dừng lâu bất thường tại checkpoint này ngay lúc này.</p>`;
+    document.getElementById("a-evidence-panel").innerHTML = "";
   } else {
+    situation.classList.remove("hidden");
+    renderSituationStripA();
     groups
       .slice()
       .sort((a, b) => b.stalledMinutes - a.stalledMinutes)
       .forEach((g) => {
-        const card = document.createElement("div");
-        card.className = "group-card" + (aSelectedGroup === g.id ? " selected" : "");
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = "case-card " + GROUP_TONE[g.id];
+        card.setAttribute("aria-pressed", String(aSelectedGroup === g.id));
         card.innerHTML = `
-          <div class="group-card-top">
-            <span>${g.name}</span>
-            <span class="badge badge-stalled">dừng ${g.stalledMinutes} phút</span>
-          </div>
-          <div class="group-card-sub">
-            Yêu cầu trợ giúp: ${g.helpRequested ? "Đã gửi" : "Chưa gửi"} · Mở lại tài liệu: ${g.docsReopened} lần
-          </div>
-        `;
+          <div class="case-body">
+            <div class="case-top">
+              <span class="case-name">${esc(g.name)}</span>
+              <span class="case-sub">${g.members.length} learner</span>
+            </div>
+            ${chipsHTML(g)}
+          </div>`;
         card.addEventListener("click", () => {
           aSelectedGroup = g.id;
           renderOptionAEvidence(g);
@@ -103,36 +312,24 @@ function runOptionAScan() {
   if (aSelectedGroup) {
     const g = groups.find((x) => x.id === aSelectedGroup);
     if (g) renderOptionAEvidence(g);
+  } else if (groups.length) {
+    document.getElementById("a-evidence-panel").innerHTML =
+      `<div class="empty-detail">Chọn một nhóm bên trái để xem evidence chi tiết và mức độ chắc chắn.</div>`;
   }
 }
 
 function renderOptionAEvidence(group) {
-  const ev = EVIDENCE_BY_GROUP[group.id];
   const panel = document.getElementById("a-evidence-panel");
-  panel.classList.remove("hidden");
   panel.innerHTML = `
-    <h3>Evidence — ${group.name} (${group.members.join(", ")})</h3>
-    ${ev.signals
-      .map(
-        (s) => `
-      <div class="evidence-signal">
-        <span class="evidence-signal-label">${s.label}
-          <span class="evidence-signal-note">${s.note}</span>
-        </span>
-        <span class="evidence-signal-value">${s.value}</span>
-      </div>`
-      )
-      .join("")}
-    <div class="uncertainty-box">
-      <strong>Mức độ chắc chắn của evidence</strong>
-      ${ev.uncertainty}
-    </div>
-    <div class="case-actions">
-      <button class="primary-btn" data-result="support_now">Hỗ trợ ngay</button>
-      <button class="secondary-btn" data-result="schedule">Lên lịch / đưa vào queue</button>
-      <button class="dismiss-btn" data-result="dismiss">Bỏ qua — chưa đủ evidence</button>
-    </div>
-  `;
+    ${evidenceHTML(group.id, `Evidence — ${group.name} (${group.members.join(", ")})`)}
+    <div class="rail mt-12">
+      <span class="overline">Quyết định của bạn</span>
+      <div class="rail-actions">
+        <button class="btn btn-decide decide-go" data-result="support_now">Hỗ trợ ngay</button>
+        <button class="btn btn-decide decide-info" data-result="schedule">Lên lịch / đưa vào queue</button>
+        <button class="btn btn-decide decide-calm" data-result="dismiss">Bỏ qua — chưa đủ evidence</button>
+      </div>
+    </div>`;
   panel.querySelectorAll("[data-result]").forEach((btn) => {
     btn.addEventListener("click", () => recordOptionAResult(group, btn.dataset.result));
   });
@@ -140,11 +337,11 @@ function renderOptionAEvidence(group) {
 
 function recordOptionAResult(group, result) {
   const summary = document.getElementById("a-result-summary");
-  summary.className = "result-summary" + (result === "dismiss" ? " dismiss" : "");
+  summary.className = "result" + (result === "dismiss" ? " dismiss" : "");
   summary.innerHTML = `
-    <strong>${RESULT_LABELS[result]}</strong>
-    Coach đã chọn "<strong>${RESULT_LABELS[result]}</strong>" cho ${group.name} sau khi tự yêu cầu AI kiểm tra
-    Checkpoint 1 — Cài đặt môi trường và đọc evidence + mức độ chắc chắn.
+    <span class="result-title">${esc(RESULT_LABELS[result])}</span>
+    <p>Coach đã chọn "<strong>${esc(RESULT_LABELS[result])}</strong>" cho ${esc(group.name)} sau khi tự yêu cầu AI kiểm tra
+    Checkpoint 1 — Cài đặt môi trường và đọc evidence + mức độ chắc chắn.</p>
   `;
   document.getElementById("a-state-scan").classList.add("hidden");
   document.getElementById("a-state-result").classList.remove("hidden");
@@ -164,7 +361,6 @@ function resetOptionA() {
   aSelectedCheckpoint = null;
   aSelectedGroup = null;
   document.getElementById("a-scan-btn").disabled = true;
-  document.getElementById("a-evidence-panel").classList.add("hidden");
   document.getElementById("a-evidence-panel").innerHTML = "";
   document.getElementById("a-state-result").classList.add("hidden");
   document.getElementById("a-state-scan").classList.add("hidden");
@@ -180,21 +376,25 @@ let bOpenCaseGroupId = null;
 let bMoreEvidenceShown = false;
 
 function renderQueue() {
+  renderSituationStripB();
   const list = document.getElementById("b-queue-list");
   list.innerHTML = "";
   const order = ["group-07", "group-09", "group-03"]; // AI's suggested order, highest priority first
   order.forEach((gid) => {
-    const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === gid);
+    const g = groupById(gid);
     const suggestion = AI_QUEUE_SUGGESTION[gid];
-    const card = document.createElement("div");
-    card.className = "queue-card";
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "case-card " + GROUP_TONE[gid];
     card.innerHTML = `
-      <div class="queue-card-top">
-        <span class="queue-group-name">${g.name} — Checkpoint 1 (Cài đặt môi trường)</span>
-        <span class="priority-tag ${PRIORITY_CLASS[suggestion.priority]}">Ưu tiên đề xuất: ${suggestion.priority}</span>
-      </div>
-      <div class="queue-card-reason">${suggestion.reason}</div>
-    `;
+      <div class="case-body">
+        <div class="case-top">
+          <span class="case-name">${esc(g.name)} — Checkpoint 1 (Cài đặt môi trường)</span>
+          <span class="pill ${PRIORITY_CLASS[suggestion.priority]}">Ưu tiên đề xuất: ${esc(suggestion.priority)}</span>
+        </div>
+        ${chipsHTML(g)}
+        ${proseHTML(suggestion.reason, { cls: "case-reason", bulletCls: "bullets bullets-md" })}
+      </div>`;
     card.addEventListener("click", () => openCase(gid));
     list.appendChild(card);
   });
@@ -203,37 +403,18 @@ function renderQueue() {
 function openCase(groupId) {
   bOpenCaseGroupId = groupId;
   bMoreEvidenceShown = false;
-  const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === groupId);
+  const g = groupById(groupId);
   const ev = EVIDENCE_BY_GROUP[groupId];
   const suggestion = AI_QUEUE_SUGGESTION[groupId];
 
   document.getElementById("b-case-group-name").textContent = `${g.name} (${g.members.join(", ")})`;
   document.getElementById("b-priority-select").value = suggestion.priority;
-
-  const panel = document.getElementById("b-evidence-panel");
-  panel.innerHTML = `
-    <h3>Evidence AI dùng để xếp hạng</h3>
-    ${ev.signals
-      .map(
-        (s) => `
-      <div class="evidence-signal">
-        <span class="evidence-signal-label">${s.label}
-          <span class="evidence-signal-note">${s.note}</span>
-        </span>
-        <span class="evidence-signal-value">${s.value}</span>
-      </div>`
-      )
-      .join("")}
-    <div class="uncertainty-box">
-      <strong>Mức độ chắc chắn của evidence</strong>
-      ${ev.uncertainty}
-    </div>
-  `;
+  document.getElementById("b-evidence-panel").innerHTML = evidenceHTML(groupId, "Evidence AI dùng để xếp hạng");
 
   document.getElementById("b-more-evidence-panel").classList.add("hidden");
   document.getElementById("b-more-evidence-panel").innerHTML = "";
   document.getElementById("b-more-evidence-btn").disabled = !ev.moreEvidence;
-  document.getElementById("b-more-evidence-btn").style.display = ev.moreEvidence ? "inline-block" : "none";
+  document.getElementById("b-more-evidence-btn").classList.toggle("hidden", !ev.moreEvidence);
 
   document.getElementById("b-state-queue").classList.add("hidden");
   document.getElementById("b-state-case").classList.remove("hidden");
@@ -246,7 +427,7 @@ document.getElementById("b-more-evidence-btn").addEventListener("click", () => {
   bMoreEvidenceShown = !bMoreEvidenceShown;
   if (bMoreEvidenceShown) {
     panel.innerHTML = ev.moreEvidence
-      .map((m) => `<div><strong>${m.label}:</strong> ${m.value}</div>`)
+      .map((m) => `<div><strong>${esc(m.label)}:</strong> ${esc(m.value)}</div>`)
       .join("");
     panel.classList.remove("hidden");
   } else {
@@ -256,18 +437,18 @@ document.getElementById("b-more-evidence-btn").addEventListener("click", () => {
 
 ["b-support-now", "b-schedule", "b-dismiss"].forEach((id) => {
   document.getElementById(id).addEventListener("click", (e) => {
-    recordOptionBResult(e.target.dataset.result);
+    recordOptionBResult(e.currentTarget.dataset.result);
   });
 });
 
 function recordOptionBResult(result) {
-  const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === bOpenCaseGroupId);
+  const g = groupById(bOpenCaseGroupId);
   const chosenPriority = document.getElementById("b-priority-select").value;
   const suggestion = AI_QUEUE_SUGGESTION[bOpenCaseGroupId];
   const priorityChanged = chosenPriority !== suggestion.priority;
 
   const summary = document.getElementById("b-result-summary");
-  summary.className = "result-summary" + (result === "dismiss" ? " dismiss" : "");
+  summary.className = "result" + (result === "dismiss" ? " dismiss" : "");
 
   let approvalNote = "";
   if (result === "dismiss") {
@@ -277,10 +458,10 @@ function recordOptionBResult(result) {
   }
 
   summary.innerHTML = `
-    <strong>${RESULT_LABELS[result]}</strong>
-    ${g.name}: mức ưu tiên coach chốt là "<strong>${chosenPriority}</strong>"
-    ${priorityChanged ? `(đã chỉnh từ đề xuất ban đầu của AI là "${suggestion.priority}")` : "(giữ nguyên đề xuất của AI)"}.
-    ${approvalNote}
+    <span class="result-title">${esc(RESULT_LABELS[result])}</span>
+    <p>${esc(g.name)}: mức ưu tiên coach chốt là "<strong>${esc(chosenPriority)}</strong>"
+    ${priorityChanged ? `(đã chỉnh từ đề xuất ban đầu của AI là "${esc(suggestion.priority)}")` : "(giữ nguyên đề xuất của AI)"}.
+    ${esc(approvalNote)}</p>
   `;
 
   document.getElementById("b-state-case").classList.add("hidden");
@@ -320,10 +501,11 @@ let cOptOutGroups = new Set();
 let cOpenCaseGroupId = null;
 
 function renderPolicyPanel() {
-  document.getElementById("c-policy-act-rule").textContent = POLICY_C.autoActRule;
-  document.getElementById("c-policy-ask-rule").textContent = POLICY_C.alwaysEscalateRule;
-  const list = document.getElementById("c-guardrail-list");
-  list.innerHTML = POLICY_C.guardrails.map((g) => `<li>${g}</li>`).join("");
+  document.getElementById("c-policy-act-rule").innerHTML = ruleBulletsHTML(POLICY_C_BULLETS.autoAct);
+  document.getElementById("c-policy-ask-rule").innerHTML = ruleBulletsHTML(POLICY_C_BULLETS.alwaysEscalate);
+  document.getElementById("c-guardrail-list").innerHTML = POLICY_C.guardrails
+    .map((g) => `<li>${esc(g)}</li>`)
+    .join("");
 }
 
 function addActivityEntry(type, groupId, summary) {
@@ -335,22 +517,25 @@ function renderActivityFeed() {
   const list = document.getElementById("c-activity-list");
   list.innerHTML = "";
   cActivityLog.forEach((entry) => {
-    const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === entry.groupId);
+    const g = entry.groupId ? groupById(entry.groupId) : null;
     const item = document.createElement("div");
-    item.className = "activity-item activity-" + entry.type;
+    item.className = "tl-item " + (ACTIVITY_TONE[entry.type] || "tone-calm");
     item.innerHTML = `
-      <div class="activity-top">
-        <span class="activity-tag">${ACTIVITY_TYPE_LABEL[entry.type] || entry.type}</span>
-        <span class="activity-time">${entry.time}</span>
-      </div>
-      <div class="activity-summary">${entry.summary}</div>
-    `;
+      <div class="tl-marker" aria-hidden="true"></div>
+      <div class="tl-body">
+        <div class="tl-top">
+          <span class="tl-tag">${esc(ACTIVITY_TYPE_LABEL[entry.type] || entry.type)}</span>
+          <span class="tl-time">${esc(entry.time)}</span>
+        </div>
+        <p class="tl-summary">${esc(entry.summary)}</p>
+      </div>`;
     if (g) {
       const btn = document.createElement("button");
-      btn.className = "link-btn";
-      btn.textContent = `Xem chi tiết — ${g.name} →`;
+      btn.type = "button";
+      btn.className = "btn tl-link";
+      btn.textContent = `Xem chi tiết — ${g.name}`;
       btn.addEventListener("click", () => openCaseC(entry.groupId));
-      item.appendChild(btn);
+      item.querySelector(".tl-body").appendChild(btn);
     }
     list.appendChild(item);
   });
@@ -374,55 +559,43 @@ function openCaseC(groupId) {
   document.getElementById("c-state-case").classList.remove("hidden");
 }
 
-function renderEvidenceBlockC(groupId) {
-  const ev = EVIDENCE_BY_GROUP[groupId];
-  return `
-    <h3>Evidence AI dùng để quyết định</h3>
-    ${ev.signals
-      .map(
-        (s) => `
-      <div class="evidence-signal">
-        <span class="evidence-signal-label">${s.label}
-          <span class="evidence-signal-note">${s.note}</span>
-        </span>
-        <span class="evidence-signal-value">${s.value}</span>
-      </div>`
-      )
-      .join("")}
-    <div class="uncertainty-box">
-      <strong>Mức độ chắc chắn của evidence</strong>
-      ${ev.uncertainty}
-    </div>
-  `;
-}
-
 function renderCaseC(groupId) {
-  const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === groupId);
+  const g = groupById(groupId);
   document.getElementById("c-case-group-name").textContent = `${g.name} (${g.members.join(", ")})`;
   document.getElementById("c-optout-toggle").checked = cOptOutGroups.has(groupId);
-  document.getElementById("c-evidence-panel").innerHTML = renderEvidenceBlockC(groupId);
+  document.getElementById("c-evidence-panel").innerHTML = evidenceHTML(groupId, "Evidence AI dùng để quyết định");
 
   const actionBox = document.getElementById("c-ai-action-box");
   const simulateBlock = document.getElementById("c-simulate-block");
   const postSimNote = document.getElementById("c-post-sim-note");
   const manualActions = document.getElementById("c-manual-actions");
+  const railHint = document.getElementById("c-rail-hint");
 
   simulateBlock.classList.add("hidden");
   postSimNote.classList.add("hidden");
   postSimNote.innerHTML = "";
   manualActions.classList.add("hidden");
+  railHint.textContent = "";
   actionBox.innerHTML = "";
+  actionBox.className = "";
 
   const state = cCaseState[groupId];
 
   if (groupId === "group-07") {
     if (state === "sent" || state === "learner_yes" || state === "learner_no") {
-      actionBox.className = "ai-action-box act";
+      actionBox.className = "ai-action tone-success";
       actionBox.innerHTML = `
-        <div class="ai-action-tag">AI đã Act — tự động gửi check-in lúc 10:41</div>
-        <div class="checkin-message">"${CHECKIN_MESSAGE["group-07"]}"</div>
-        <div class="ai-action-meta">Độ tin cậy: Trung bình · Rủi ro: Thấp (một câu hỏi trung lập, có thể thu hồi, không ảnh hưởng điểm/đánh giá).<br>Quy tắc policy khớp: "${POLICY_C.autoActRule}"</div>
-        ${state === "sent" ? `<button class="undo-btn" id="c-undo-btn">↺ Thu hồi check-in (undo)</button>` : ""}
+        <span class="overline">AI đã Act — tự động gửi check-in lúc 10:41</span>
+        <div class="checkin">"${esc(CHECKIN_MESSAGE["group-07"])}"</div>
+        <div class="ai-meta">
+          <span>Độ tin cậy: <strong>Trung bình</strong></span>
+          <span>Rủi ro: <strong>Thấp</strong> (một câu hỏi trung lập, có thể thu hồi, không ảnh hưởng điểm/đánh giá).</span>
+        </div>
+        <div class="rule-match">
+          <span class="overline">Quy tắc policy khớp</span>
+          ${ruleBulletsHTML(POLICY_C_BULLETS.autoAct)}
+        </div>
+        ${state === "sent" ? `<button type="button" class="btn btn-danger mt-12" id="c-undo-btn">Thu hồi check-in (undo)</button>` : ""}
       `;
       if (state === "sent") {
         document.getElementById("c-undo-btn").addEventListener("click", () => {
@@ -431,6 +604,8 @@ function renderCaseC(groupId) {
           renderCaseC("group-07");
         });
         simulateBlock.classList.remove("hidden");
+        railHint.textContent = "Check-in đang chờ phản hồi. Bạn vẫn có thể quyết định ngay, hoặc thu hồi trước.";
+        manualActions.classList.remove("hidden");
       } else if (state === "learner_yes") {
         postSimNote.classList.remove("hidden");
         postSimNote.innerHTML = `<strong>Learner đã phản hồi:</strong> xác nhận cần trợ giúp. Case được chuyển cho coach quyết định bước tiếp theo — AI không tự xử lý thay.`;
@@ -441,38 +616,49 @@ function renderCaseC(groupId) {
         manualActions.classList.remove("hidden");
       }
     } else if (state === "undone") {
-      actionBox.className = "ai-action-box undone";
+      actionBox.className = "ai-action tone-calm";
       actionBox.innerHTML = `
-        <div class="ai-action-tag">Đã thu hồi (undo)</div>
-        <div>Coach đã thu hồi check-in trước khi learner phản hồi. Case chuyển về xử lý thủ công, giống cơ chế Option A/B.</div>
-      `;
+        <span class="overline">Đã thu hồi (undo)</span>
+        <p>Coach đã thu hồi check-in trước khi learner phản hồi. Case chuyển về xử lý thủ công, giống cơ chế Option A/B.</p>`;
       manualActions.classList.remove("hidden");
     } else if (state === "resolved") {
-      actionBox.className = "ai-action-box act";
-      actionBox.innerHTML = `<div class="ai-action-tag">Case đã được coach đóng</div><div>Xem lại quyết định ở bước 3, hoặc quay lại nhật ký.</div>`;
+      actionBox.className = "ai-action tone-success";
+      actionBox.innerHTML = `
+        <span class="overline">Case đã được coach đóng</span>
+        <p>Xem lại quyết định ở bước 3, hoặc quay lại nhật ký.</p>`;
+      railHint.textContent = "Case này đã đóng.";
     }
   } else if (groupId === "group-09") {
-    actionBox.className = "ai-action-box ask";
+    actionBox.className = "ai-action tone-warning";
     actionBox.innerHTML = `
-      <div class="ai-action-tag">AI Ask — không tự trả lời</div>
-      <div>${g.name} đã chủ động gửi yêu cầu trợ giúp lúc 10:38. Theo guardrail, một yêu cầu trực tiếp từ learner luôn được coi là "ảnh hưởng lớn" — AI không tự soạn hay gửi phản hồi thay, mà chuyển thẳng cho coach xử lý.</div>
-      <div class="ai-action-meta">Quy tắc policy khớp: "${POLICY_C.alwaysEscalateRule}"</div>
-    `;
+      <span class="overline">AI Ask — không tự trả lời</span>
+      ${proseHTML(
+        `${g.name} đã chủ động gửi yêu cầu trợ giúp lúc 10:38. Theo guardrail, một yêu cầu trực tiếp từ learner luôn được coi là "ảnh hưởng lớn" — AI không tự soạn hay gửi phản hồi thay, mà chuyển thẳng cho coach xử lý.`,
+        { bulletCls: "bullets bullets-md" }
+      )}
+      <div class="rule-match">
+        <span class="overline">Quy tắc policy khớp</span>
+        ${ruleBulletsHTML(POLICY_C_BULLETS.alwaysEscalate)}
+      </div>`;
     if (state !== "resolved") manualActions.classList.remove("hidden");
+    else railHint.textContent = "Case này đã đóng.";
   } else if (groupId === "group-03") {
-    actionBox.className = "ai-action-box monitor";
+    actionBox.className = "ai-action tone-calm";
     actionBox.innerHTML = `
-      <div class="ai-action-tag">Don't Act — chỉ theo dõi</div>
-      <div>Các tín hiệu của ${g.name} nằm trong ngưỡng bình thường so với các nhóm đã qua checkpoint, nên AI không tạo hành động hay check-in nào. Coach vẫn có thể can thiệp thủ công nếu có lý do khác mà AI không thấy được (ví dụ quan sát trực tiếp tại lớp).</div>
-    `;
+      <span class="overline">Don't Act — chỉ theo dõi</span>
+      ${proseHTML(
+        `Các tín hiệu của ${g.name} nằm trong ngưỡng bình thường so với các nhóm đã qua checkpoint, nên AI không tạo hành động hay check-in nào. Coach vẫn có thể can thiệp thủ công nếu có lý do khác mà AI không thấy được (ví dụ quan sát trực tiếp tại lớp).`,
+        { bulletCls: "bullets bullets-md" }
+      )}`;
     if (state !== "resolved") manualActions.classList.remove("hidden");
+    else railHint.textContent = "Case này đã đóng.";
   }
 }
 
 ["c-sim-yes", "c-sim-no"].forEach((id) => {
   document.getElementById(id).addEventListener("click", () => {
     if (cOpenCaseGroupId !== "group-07" || cCaseState["group-07"] !== "sent") return;
-    const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === "group-07");
+    const g = groupById("group-07");
     if (id === "c-sim-yes") {
       cCaseState["group-07"] = "learner_yes";
       addActivityEntry("coach_decision", "group-07", `[Mô phỏng] ${g.name} phản hồi check-in: cần trợ giúp. Case chuyển cho coach.`);
@@ -486,7 +672,7 @@ function renderCaseC(groupId) {
 
 document.getElementById("c-optout-toggle").addEventListener("change", (e) => {
   if (!cOpenCaseGroupId) return;
-  const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === cOpenCaseGroupId);
+  const g = groupById(cOpenCaseGroupId);
   if (e.target.checked) {
     cOptOutGroups.add(cOpenCaseGroupId);
     addActivityEntry("policy_change", cOpenCaseGroupId, `Coach tắt hành động/theo dõi chủ động của AI cho ${g.name}.`);
@@ -498,13 +684,13 @@ document.getElementById("c-optout-toggle").addEventListener("change", (e) => {
 
 ["c-support-now", "c-schedule", "c-dismiss"].forEach((id) => {
   document.getElementById(id).addEventListener("click", (e) => {
-    recordOptionCResult(e.target.dataset.result);
+    recordOptionCResult(e.currentTarget.dataset.result);
   });
 });
 
 function recordOptionCResult(result) {
   const groupId = cOpenCaseGroupId;
-  const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === groupId);
+  const g = groupById(groupId);
   const priorState = cCaseState[groupId];
   cCaseState[groupId] = "resolved";
 
@@ -523,11 +709,11 @@ function recordOptionCResult(result) {
   addActivityEntry("coach_decision", groupId, `Coach chọn "${RESULT_LABELS[result]}" cho ${g.name} (${pathNote}).`);
 
   const summary = document.getElementById("c-result-summary");
-  summary.className = "result-summary" + (result === "dismiss" ? " dismiss" : "");
+  summary.className = "result" + (result === "dismiss" ? " dismiss" : "");
   summary.innerHTML = `
-    <strong>${RESULT_LABELS[result]}</strong>
-    Coach đã chọn "<strong>${RESULT_LABELS[result]}</strong>" cho ${g.name}, ${pathNote}.
-    Toàn bộ hành động của AI và quyết định của coach cho case này đã được ghi vào nhật ký (audit log).
+    <span class="result-title">${esc(RESULT_LABELS[result])}</span>
+    <p>Coach đã chọn "<strong>${esc(RESULT_LABELS[result])}</strong>" cho ${esc(g.name)}, ${esc(pathNote)}.
+    Toàn bộ hành động của AI và quyết định của coach cho case này đã được ghi vào nhật ký (audit log).</p>
   `;
   document.getElementById("c-state-case").classList.add("hidden");
   document.getElementById("c-state-result").classList.remove("hidden");
@@ -556,10 +742,16 @@ function resetOptionC() {
   document.getElementById("c-state-case").classList.add("hidden");
   document.getElementById("c-state-context").classList.remove("hidden");
   renderPolicyPanel();
+  renderSituationStripC();
   renderActivityFeed();
 }
 
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  applyTheme(currentTheme() === "dark" ? "light" : "dark");
+});
+
 // ---------- Init ----------
+initTheme();
 renderClassBanner();
 renderCheckpointList();
 renderQueue();
