@@ -29,7 +29,7 @@
 | CP1 — Evidence Continuity | [cp1-evidence-continuity.md](cp1-evidence-continuity.md) | Hoàn thành bản chuẩn bị |
 | CP2 — Meaningful Options | [three-option-design-sheet.md](three-option-design-sheet.md) | Hoàn thành bản chuẩn bị |
 | CP3 — Human Control | [human-ai-decision-table.md](human-ai-decision-table.md) | Tự kiểm xong cho A, B và C |
-| CP4 — Test-ready | [prototype-link.md](prototype-link.md) | Prototype A/B/C chạy được local; 12 người ngoài nhóm đã tự dùng, nhưng ở dạng tự báo cáo qua tin nhắn, **không có facilitator quan sát trực tiếp** — xem [prototype-feedback-note.md](prototype-feedback-note.md) |
+| CP4 — Test-ready | [prototype-link.md](prototype-link.md) | Prototype A/B/C chạy được local; đã có 12 phản hồi từ người ngoài nhóm tự dùng, nhưng ở dạng tự báo cáo qua tin nhắn, **không có facilitator quan sát trực tiếp** — xem [prototype-feedback-note.md](prototype-feedback-note.md) |
 | CP5 — Learning | [group-feedback-synthesis.md](group-feedback-synthesis.md) | Đã tổng hợp pattern từ 12 phản hồi và chốt một Next Change có evidence |
 
 ## Cách chạy prototype (Option A, B & C)
@@ -46,12 +46,12 @@ npx serve .
 
 Chi tiết critical interaction của từng option xem tại [prototype-link.md](prototype-link.md).
 
-## Trạng thái triển khai Option A / B
+## Trạng thái triển khai Option A, B và C
 
 - **Option A — Coach Query:** Đã implement thành prototype (`prototype/`), tab "Option A". Coach chủ động chọn checkpoint và yêu cầu AI phân tích; AI không tự chạy trước khi có lệnh.
 - **Option B — AI Review Queue:** Đã implement thành prototype (`prototype/`), tab "Option B". AI tự tạo review queue kèm priority + uncertainty; coach review, chỉnh priority, approve/dismiss trước khi có bước hỗ trợ tiếp theo.
 - **Option C — Proactive Agent:** Đã implement thành prototype (`prototype/`), tab "Option C". AI có thể đã tự Act (gửi check-in rủi ro thấp, có thể thu hồi) hoặc tự Ask/chuyển thẳng coach — **trước khi coach mở tab** — tuỳ theo policy và guardrail; coach xem audit log, undo, mô phỏng phản hồi learner, tắt theo dõi theo nhóm, và luôn là người đóng case cuối cùng.
-- Cả A, B và C đã được tự chạy và kiểm tra toàn bộ flow (chọn/quét/mở case, đổi trạng thái, các nút hành động, undo, mô phỏng phản hồi learner, toggle policy, back, reset) bằng smoke test nội bộ. Ngoài ra, 12 người ngoài nhóm đã tự mở prototype và báo lại lựa chọn + lý do qua tin nhắn — nhưng đây là tự báo cáo không đồng bộ, không có ai quan sát trực tiếp hành vi thao tác của họ, nên **chưa thể tuyên bố Gate 4 (test-ready) đã pass đúng theo luật facilitation gốc của bài**, dù đã có dữ liệu thật để tổng hợp Gate 5.
+- Cả A, B và C đã được tự chạy và kiểm tra toàn bộ flow (chọn/quét/mở case, đổi trạng thái, các nút hành động, undo, mô phỏng phản hồi learner, toggle policy, back, reset) bằng smoke test nội bộ. Ngoài ra, đã có 12 phản hồi từ người ngoài nhóm tự mở prototype và báo lại lựa chọn + lý do qua tin nhắn — nhưng đây là tự báo cáo không đồng bộ, không có ai quan sát trực tiếp hành vi thao tác của họ, nên **chưa thể tuyên bố Gate 4 (test-ready) đã pass đúng theo luật facilitation gốc của bài**, dù đã có dữ liệu thật để tổng hợp Gate 5.
 
 ## Ba Solution Options
 

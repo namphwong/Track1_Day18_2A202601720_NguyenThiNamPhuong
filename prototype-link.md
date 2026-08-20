@@ -1,7 +1,7 @@
 # Prototype Link — Day 18
 
-**Người thực hiện:** Vũ Thế Lực (Option A, Option B, repo/common context); Option C (Proactive Agent) theo phân công của Đỗ Thị Thanh Loan, hoàn thiện trong cùng bộ file prototype để giữ đúng data fixture chung.
-**Trạng thái:** Prototype chạy được local; **chưa test với người thật, chưa có feedback**.
+**Người thực hiện:** Nhánh 1 (Vũ Thế Lực, Hoàng Tuấn Hưng — Option A, Option B, repo/common context); Nhánh 2 (Đỗ Thị Thanh Loan, Nguyễn Thị Nam Phương — Option C, Human–AI Decision Table, test setup & feedback synthesis).  
+**Trạng thái:** Prototype A/B/C chạy được local; đã thu thập 12 phản hồi tự báo cáo qua tin nhắn từ người ngoài nhóm (xem [prototype-feedback-note.md](prototype-feedback-note.md)); chưa có phiên test quan sát trực tiếp (facilitated test).
 
 ## Cách chạy local
 
@@ -16,6 +16,7 @@ Không cần build step, không cần backend, không cần cài package.
    ```
    rồi mở `http://localhost:3000` (hoặc cổng tương ứng).
 3. Trang mở sẵn ở tab **Option A**. Dùng thanh tab trên header để chuyển sang **Option B** hoặc **Option C**. Nút **"↺ Reset về common context"** ở góc phải header sẽ đưa cả ba option về trạng thái ban đầu bất cứ lúc nào.
+4. Giao diện có **hai chế độ sáng/tối**. Mặc định chạy theo cài đặt của hệ điều hành; nút mặt trời/mặt trăng cạnh nút Reset cho phép đổi thủ công. Lựa chọn được nhớ lại giữa các lần mở (nếu trình duyệt cho phép `localStorage` với `file://` — không nhớ được cũng không ảnh hưởng flow). Khi test với người thật nên **cố định một chế độ cho tất cả tester** để không thêm biến số ngoài cơ chế A/B/C.
 
 ## Link deploy
 
@@ -26,8 +27,8 @@ Chưa deploy online. Chỉ chạy local theo hướng dẫn trên.
 | Option | File / entry point |
 | --- | --- |
 | Common context, tab switcher, layout | [prototype/index.html](prototype/index.html) |
-| Style dùng chung cho A và B | [prototype/styles.css](prototype/styles.css) |
-| Logic Option A + Option B | [prototype/app.js](prototype/app.js) |
+| Style dùng chung cho A, B và C | [prototype/styles.css](prototype/styles.css) |
+| Logic Option A + Option B + Option C | [prototype/app.js](prototype/app.js) |
 | Data fixture dùng chung (lớp 50 learner, Checkpoint cài đặt, Nhóm 03/07/09, evidence) | [prototype/data.js](prototype/data.js) |
 
 ## Critical interaction — Option A (Coach Query / On-demand Assist)

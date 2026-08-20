@@ -1,7 +1,8 @@
 # Prototype Feedback Note
 
-**Người thu thập:** Vũ Thế Lực
-**Hình thức:** 12 người ngoài nhóm tự mở link prototype (https://claude.ai/code/artifact/fce7227a-a027-47b1-9282-2ebf58048e26), tự bấm qua cả 3 tab A/B/C, rồi tự trả lời qua tin nhắn — **không có người facilitate ngồi cạnh quan sát trực tiếp**.
+**Người thu thập dữ liệu:** Vũ Thế Lực  
+**Phân tích & tổng hợp:** Nhánh 2 (Đỗ Thị Thanh Loan, Nguyễn Thị Nam Phương) — Nhóm Đường Bốn Mùa Xuân  
+**Hình thức:** 12 phản hồi từ người ngoài nhóm tự mở link prototype (https://claude.ai/code/artifact/fce7227a-a027-47b1-9282-2ebf58048e26), tự bấm qua cả 3 tab A/B/C, rồi tự trả lời qua tin nhắn — **không có người facilitate ngồi cạnh quan sát trực tiếp**.
 
 ## Giới hạn về phương pháp — đọc trước khi dùng bảng dưới
 
@@ -30,15 +31,15 @@ Vì vậy bảng dưới đây **chỉ điền được** cột "Option chọn" 
 
 ```
 OBSERVED
-12 người tự mở prototype qua link, dùng cả A/B/C, tự báo cáo lựa chọn + lý do + điểm khó chịu qua tin nhắn.
+12 phản hồi thu thập qua link prototype, trải nghiệm cả A/B/C, tự báo cáo lựa chọn + lý do + điểm khó chịu qua tin nhắn.
 Phân bố lựa chọn: B = 5/12, C = 4/12, A = 3/12.
 
 INTERPRETED
-- B được chọn nhiều nhất trong nhóm 12 người này vì cảm giác "cân bằng giữa tự động và kiểm soát" —
+- B được chọn nhiều nhất trong nhóm 12 phản hồi này vì cảm giác "cân bằng giữa tự động và kiểm soát" —
   đây là cảm nhận của mẫu nhỏ, không suy ra B là lựa chọn đúng hay tốt hơn A/C nói chung.
-- Cả 3 người chọn A đều tự nêu đúng nhược điểm "tốn thao tác/khó scale" mà nhóm đã dự đoán từ
+- Cả 3 phản hồi chọn A đều tự nêu đúng nhược điểm "tốn thao tác/khó scale" mà nhóm đã dự đoán từ
   three-option-design-sheet.md — dấu hiệu cho thấy trade-off của A được cảm nhận đúng như thiết kế.
-- 4/12 người (chọn cả B lẫn C) cùng thắc mắc về cách priority được tính — lặp lại đủ nhiều lần để
+- 4/12 phản hồi (chọn cả B lẫn C) cùng thắc mắc về cách priority được tính — lặp lại đủ nhiều lần để
   coi là một pattern, không phải ý kiến đơn lẻ.
 - Các lo ngại về Option C (false positive, learner có biết đang bị theo dõi không, dễ hiểu nhầm thời
   gian dừng là mắc kẹt) trùng với đúng những điều cp1-evidence-continuity.md đã liệt vào Still Unproven
@@ -52,7 +53,7 @@ STILL UNPROVEN
 - False positive ở Option C nên được xử lý/phục hồi ra sao — chưa có cơ chế cụ thể, mới chỉ có Undo.
 - Learner có cần được thông báo AI đang theo dõi tín hiệu hành vi của họ không — câu hỏi consent
   chưa được trả lời, không nằm trong phạm vi 3 prototype hiện tại.
-- Vì đây là tự báo cáo không đồng bộ, không biết hành vi thao tác thật của 12 người này khi dùng —
+- Vì đây là tự báo cáo không đồng bộ, không biết hành vi thao tác thật từ 12 phản hồi này khi dùng —
   chỉ biết họ nói gì sau khi dùng xong, không biết họ có thực sự làm đúng outcome task hay bỏ qua bước nào.
 ```
 
