@@ -16,7 +16,7 @@
 - **Case:** C — AI Support Radar (VLearn)
 - **Nhóm:** 4 thành viên
 - **Nguồn evidence:** Day 17 — 2 learner interviews và 1 Lab Coach interview
-- **Trạng thái:** Đã chuẩn bị CP1, CP2; prototype A/B đã build và tự kiểm flow (CP3/CP4 một phần); chưa test với người thật và chưa validated
+- **Trạng thái:** Đã chuẩn bị CP1, CP2; prototype A/B/C đã build và tự kiểm flow (CP3 hoàn tất tự kiểm, CP4 một phần); chưa test với người thật và chưa validated
 
 ## Hypothesis Problem
 
@@ -28,8 +28,8 @@
 | --- | --- | --- |
 | CP1 — Evidence Continuity | [cp1-evidence-continuity.md](cp1-evidence-continuity.md) | Hoàn thành bản chuẩn bị |
 | CP2 — Meaningful Options | [three-option-design-sheet.md](three-option-design-sheet.md) | Hoàn thành bản chuẩn bị |
-| CP3 — Human Control | [human-ai-decision-table.md](human-ai-decision-table.md) | Tự kiểm xong cho A/B; C còn ở dạng thiết kế, chưa implement |
-| CP4 — Test-ready | [prototype-link.md](prototype-link.md) | Prototype A/B chạy được local; **chưa test với người thật** |
+| CP3 — Human Control | [human-ai-decision-table.md](human-ai-decision-table.md) | Tự kiểm xong cho A, B và C |
+| CP4 — Test-ready | [prototype-link.md](prototype-link.md) | Prototype A/B/C chạy được local; **chưa test với người thật** |
 | CP5 — Learning | `group-feedback-synthesis.md` | Chưa thực hiện — cần feedback thật trước khi điền |
 
 ## Cách chạy prototype (Option A & B)
@@ -50,8 +50,8 @@ Chi tiết critical interaction của từng option xem tại [prototype-link.md
 
 - **Option A — Coach Query:** Đã implement thành prototype (`prototype/`), tab "Option A". Coach chủ động chọn checkpoint và yêu cầu AI phân tích; AI không tự chạy trước khi có lệnh.
 - **Option B — AI Review Queue:** Đã implement thành prototype (`prototype/`), tab "Option B". AI tự tạo review queue kèm priority + uncertainty; coach review, chỉnh priority, approve/dismiss trước khi có bước hỗ trợ tiếp theo.
-- **Option C — Proactive Agent:** Chưa implement trong nhánh này (thuộc phần Loan/Nam Phương), vẫn ở trạng thái thiết kế từ CP2.
-- Cả A và B đã được tự chạy và kiểm tra toàn bộ flow (chọn/quét/mở case, đổi trạng thái, các nút hành động, back, reset) bằng smoke test nội bộ — **chưa có tester ngoài nhóm thao tác**, nên chưa thể tuyên bố Gate 4 (test-ready) đã pass theo nghĩa đầy đủ.
+- **Option C — Proactive Agent:** Đã implement thành prototype (`prototype/`), tab "Option C". AI có thể đã tự Act (gửi check-in rủi ro thấp, có thể thu hồi) hoặc tự Ask/chuyển thẳng coach — **trước khi coach mở tab** — tuỳ theo policy và guardrail; coach xem audit log, undo, mô phỏng phản hồi learner, tắt theo dõi theo nhóm, và luôn là người đóng case cuối cùng.
+- Cả A, B và C đã được tự chạy và kiểm tra toàn bộ flow (chọn/quét/mở case, đổi trạng thái, các nút hành động, undo, mô phỏng phản hồi learner, toggle policy, back, reset) bằng smoke test nội bộ — **chưa có tester ngoài nhóm thao tác**, nên chưa thể tuyên bố Gate 4 (test-ready) đã pass theo nghĩa đầy đủ.
 
 ## Ba Solution Options
 
@@ -78,11 +78,9 @@ Nhóm tổ chức thành hai nhánh triển khai để phù hợp tình hình l�
 
 ### Trách nhiệm chung
 
-- Cả A/B/C phải dùng cùng user, context, task, content/data fixture và desired outcome.
-- Người test phải trải nghiệm cả ba option; không chỉ test option mình build.
-- Mỗi observation phải tách khỏi interpretation và không được tạo feedback giả.
-- Mỗi người ghi rõ phần đóng góp thực tế trong repo cá nhân và AI Support Log.
-- Next Change chỉ được chốt sau khi có feedback thật; chưa được tuyên bố solution validated.
+- Người test phải trải nghiệm cả ba option, không chỉ mang option mình build đi test.
+- Mỗi observation phải tách khỏi interpretation, không tạo feedback giả.
+- Mỗi người ghi rõ phần đóng góp thực tế trong repo cá nhân và trong AI Support Log.
 
 ## Still Unproven
 
@@ -123,7 +121,7 @@ Track1_Day18_DuongBonMuaXuan/
 
 - [x] Gate 1 — Evidence Continuity
 - [x] Gate 2 — Meaningful Options
-- [x] Gate 3 — Human Control — tự kiểm xong cho Option A/B ([human-ai-decision-table.md](human-ai-decision-table.md)); Option C chưa implement nên chưa tự kiểm được.
+- [x] Gate 3 — Human Control — tự kiểm xong cho Option A, B và C ([human-ai-decision-table.md](human-ai-decision-table.md)); chỉ là tự kiểm nội bộ bằng smoke test, chưa có tester ngoài nhóm xác nhận.
 - [ ] Gate 4 — Test-ready — prototype A/B chạy được và đã tự kiểm toàn bộ flow, nhưng **chưa có người ngoài nhóm test**; chưa đủ điều kiện đánh dấu pass.
 - [ ] Gate 5 — Learning, not praise — chưa có feedback thật, chưa thể tổng hợp.
 

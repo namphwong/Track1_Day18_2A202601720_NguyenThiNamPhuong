@@ -15,18 +15,20 @@ function renderClassBanner() {
 
 // ---------- Tabs ----------
 function switchTab(tab) {
-  document.getElementById("panel-A").classList.toggle("hidden", tab !== "A");
-  document.getElementById("panel-B").classList.toggle("hidden", tab !== "B");
-  document.getElementById("tab-btn-A").classList.toggle("active", tab === "A");
-  document.getElementById("tab-btn-B").classList.toggle("active", tab === "B");
+  ["A", "B", "C"].forEach((t) => {
+    document.getElementById("panel-" + t).classList.toggle("hidden", tab !== t);
+    document.getElementById("tab-btn-" + t).classList.toggle("active", tab === t);
+  });
 }
 
 document.getElementById("tab-btn-A").addEventListener("click", () => switchTab("A"));
 document.getElementById("tab-btn-B").addEventListener("click", () => switchTab("B"));
+document.getElementById("tab-btn-C").addEventListener("click", () => switchTab("C"));
 
 document.getElementById("global-reset").addEventListener("click", () => {
   resetOptionA();
   resetOptionB();
+  resetOptionC();
 });
 
 // =====================================================================
@@ -304,8 +306,262 @@ function resetOptionB() {
   renderQueue();
 }
 
+// =====================================================================
+// OPTION C — Proactive Support Agent with Guardrails
+// =====================================================================
+// Khác A/B: AI có thể đã Act (tự gửi check-in rủi ro thấp, có thể undo)
+// hoặc tự quyết định Ask/chuyển thẳng coach — TRƯỚC KHI coach mở tab này.
+// Coach chỉ xem lại, can thiệp (undo/override), đặt policy và đóng case.
+
+let cActivityLog = [];
+let cActivityCounter = 100; // id cho entry mới coach/tự thêm trong phiên demo
+let cCaseState = {}; // groupId -> "sent" | "undone" | "learner_yes" | "learner_no" | "escalated" | "monitored" | "resolved"
+let cOptOutGroups = new Set();
+let cOpenCaseGroupId = null;
+
+function renderPolicyPanel() {
+  document.getElementById("c-policy-act-rule").textContent = POLICY_C.autoActRule;
+  document.getElementById("c-policy-ask-rule").textContent = POLICY_C.alwaysEscalateRule;
+  const list = document.getElementById("c-guardrail-list");
+  list.innerHTML = POLICY_C.guardrails.map((g) => `<li>${g}</li>`).join("");
+}
+
+function addActivityEntry(type, groupId, summary) {
+  cActivityCounter += 1;
+  cActivityLog.unshift({ id: cActivityCounter, time: "vừa xong", groupId, type, summary });
+}
+
+function renderActivityFeed() {
+  const list = document.getElementById("c-activity-list");
+  list.innerHTML = "";
+  cActivityLog.forEach((entry) => {
+    const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === entry.groupId);
+    const item = document.createElement("div");
+    item.className = "activity-item activity-" + entry.type;
+    item.innerHTML = `
+      <div class="activity-top">
+        <span class="activity-tag">${ACTIVITY_TYPE_LABEL[entry.type] || entry.type}</span>
+        <span class="activity-time">${entry.time}</span>
+      </div>
+      <div class="activity-summary">${entry.summary}</div>
+    `;
+    if (g) {
+      const btn = document.createElement("button");
+      btn.className = "link-btn";
+      btn.textContent = `Xem chi tiết — ${g.name} →`;
+      btn.addEventListener("click", () => openCaseC(entry.groupId));
+      item.appendChild(btn);
+    }
+    list.appendChild(item);
+  });
+}
+
+document.getElementById("c-pause-toggle").addEventListener("change", (e) => {
+  addActivityEntry(
+    "policy_change",
+    null,
+    e.target.checked
+      ? "Coach tạm dừng toàn bộ hành động tự động của AI (policy-level stop). Các case đang mở vẫn giữ nguyên, nhưng AI sẽ không tự Act với case mới cho tới khi được bật lại."
+      : "Coach bật lại hành động tự động của AI."
+  );
+  renderActivityFeed();
+});
+
+function openCaseC(groupId) {
+  cOpenCaseGroupId = groupId;
+  renderCaseC(groupId);
+  document.getElementById("c-state-context").classList.add("hidden");
+  document.getElementById("c-state-case").classList.remove("hidden");
+}
+
+function renderEvidenceBlockC(groupId) {
+  const ev = EVIDENCE_BY_GROUP[groupId];
+  return `
+    <h3>Evidence AI dùng để quyết định</h3>
+    ${ev.signals
+      .map(
+        (s) => `
+      <div class="evidence-signal">
+        <span class="evidence-signal-label">${s.label}
+          <span class="evidence-signal-note">${s.note}</span>
+        </span>
+        <span class="evidence-signal-value">${s.value}</span>
+      </div>`
+      )
+      .join("")}
+    <div class="uncertainty-box">
+      <strong>Mức độ chắc chắn của evidence</strong>
+      ${ev.uncertainty}
+    </div>
+  `;
+}
+
+function renderCaseC(groupId) {
+  const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === groupId);
+  document.getElementById("c-case-group-name").textContent = `${g.name} (${g.members.join(", ")})`;
+  document.getElementById("c-optout-toggle").checked = cOptOutGroups.has(groupId);
+  document.getElementById("c-evidence-panel").innerHTML = renderEvidenceBlockC(groupId);
+
+  const actionBox = document.getElementById("c-ai-action-box");
+  const simulateBlock = document.getElementById("c-simulate-block");
+  const postSimNote = document.getElementById("c-post-sim-note");
+  const manualActions = document.getElementById("c-manual-actions");
+
+  simulateBlock.classList.add("hidden");
+  postSimNote.classList.add("hidden");
+  postSimNote.innerHTML = "";
+  manualActions.classList.add("hidden");
+  actionBox.innerHTML = "";
+
+  const state = cCaseState[groupId];
+
+  if (groupId === "group-07") {
+    if (state === "sent" || state === "learner_yes" || state === "learner_no") {
+      actionBox.className = "ai-action-box act";
+      actionBox.innerHTML = `
+        <div class="ai-action-tag">AI đã Act — tự động gửi check-in lúc 10:41</div>
+        <div class="checkin-message">"${CHECKIN_MESSAGE["group-07"]}"</div>
+        <div class="ai-action-meta">Độ tin cậy: Trung bình · Rủi ro: Thấp (một câu hỏi trung lập, có thể thu hồi, không ảnh hưởng điểm/đánh giá).<br>Quy tắc policy khớp: "${POLICY_C.autoActRule}"</div>
+        ${state === "sent" ? `<button class="undo-btn" id="c-undo-btn">↺ Thu hồi check-in (undo)</button>` : ""}
+      `;
+      if (state === "sent") {
+        document.getElementById("c-undo-btn").addEventListener("click", () => {
+          cCaseState["group-07"] = "undone";
+          addActivityEntry("undo", "group-07", `Coach đã thu hồi check-in gửi tới ${g.name} trước khi có phản hồi.`);
+          renderCaseC("group-07");
+        });
+        simulateBlock.classList.remove("hidden");
+      } else if (state === "learner_yes") {
+        postSimNote.classList.remove("hidden");
+        postSimNote.innerHTML = `<strong>Learner đã phản hồi:</strong> xác nhận cần trợ giúp. Case được chuyển cho coach quyết định bước tiếp theo — AI không tự xử lý thay.`;
+        manualActions.classList.remove("hidden");
+      } else if (state === "learner_no") {
+        postSimNote.classList.remove("hidden");
+        postSimNote.innerHTML = `<strong>Learner đã phản hồi:</strong> không cần hỗ trợ thêm. AI ghi nhận lý do tối thiểu và không làm phiền thêm trong phiên này — nhưng case vẫn mở, coach vẫn có thể can thiệp nếu không đồng ý.`;
+        manualActions.classList.remove("hidden");
+      }
+    } else if (state === "undone") {
+      actionBox.className = "ai-action-box undone";
+      actionBox.innerHTML = `
+        <div class="ai-action-tag">Đã thu hồi (undo)</div>
+        <div>Coach đã thu hồi check-in trước khi learner phản hồi. Case chuyển về xử lý thủ công, giống cơ chế Option A/B.</div>
+      `;
+      manualActions.classList.remove("hidden");
+    } else if (state === "resolved") {
+      actionBox.className = "ai-action-box act";
+      actionBox.innerHTML = `<div class="ai-action-tag">Case đã được coach đóng</div><div>Xem lại quyết định ở bước 3, hoặc quay lại nhật ký.</div>`;
+    }
+  } else if (groupId === "group-09") {
+    actionBox.className = "ai-action-box ask";
+    actionBox.innerHTML = `
+      <div class="ai-action-tag">AI Ask — không tự trả lời</div>
+      <div>${g.name} đã chủ động gửi yêu cầu trợ giúp lúc 10:38. Theo guardrail, một yêu cầu trực tiếp từ learner luôn được coi là "ảnh hưởng lớn" — AI không tự soạn hay gửi phản hồi thay, mà chuyển thẳng cho coach xử lý.</div>
+      <div class="ai-action-meta">Quy tắc policy khớp: "${POLICY_C.alwaysEscalateRule}"</div>
+    `;
+    if (state !== "resolved") manualActions.classList.remove("hidden");
+  } else if (groupId === "group-03") {
+    actionBox.className = "ai-action-box monitor";
+    actionBox.innerHTML = `
+      <div class="ai-action-tag">Don't Act — chỉ theo dõi</div>
+      <div>Các tín hiệu của ${g.name} nằm trong ngưỡng bình thường so với các nhóm đã qua checkpoint, nên AI không tạo hành động hay check-in nào. Coach vẫn có thể can thiệp thủ công nếu có lý do khác mà AI không thấy được (ví dụ quan sát trực tiếp tại lớp).</div>
+    `;
+    if (state !== "resolved") manualActions.classList.remove("hidden");
+  }
+}
+
+["c-sim-yes", "c-sim-no"].forEach((id) => {
+  document.getElementById(id).addEventListener("click", () => {
+    if (cOpenCaseGroupId !== "group-07" || cCaseState["group-07"] !== "sent") return;
+    const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === "group-07");
+    if (id === "c-sim-yes") {
+      cCaseState["group-07"] = "learner_yes";
+      addActivityEntry("coach_decision", "group-07", `[Mô phỏng] ${g.name} phản hồi check-in: cần trợ giúp. Case chuyển cho coach.`);
+    } else {
+      cCaseState["group-07"] = "learner_no";
+      addActivityEntry("coach_decision", "group-07", `[Mô phỏng] ${g.name} phản hồi check-in: không cần hỗ trợ thêm.`);
+    }
+    renderCaseC("group-07");
+  });
+});
+
+document.getElementById("c-optout-toggle").addEventListener("change", (e) => {
+  if (!cOpenCaseGroupId) return;
+  const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === cOpenCaseGroupId);
+  if (e.target.checked) {
+    cOptOutGroups.add(cOpenCaseGroupId);
+    addActivityEntry("policy_change", cOpenCaseGroupId, `Coach tắt hành động/theo dõi chủ động của AI cho ${g.name}.`);
+  } else {
+    cOptOutGroups.delete(cOpenCaseGroupId);
+    addActivityEntry("policy_change", cOpenCaseGroupId, `Coach bật lại theo dõi chủ động của AI cho ${g.name}.`);
+  }
+});
+
+["c-support-now", "c-schedule", "c-dismiss"].forEach((id) => {
+  document.getElementById(id).addEventListener("click", (e) => {
+    recordOptionCResult(e.target.dataset.result);
+  });
+});
+
+function recordOptionCResult(result) {
+  const groupId = cOpenCaseGroupId;
+  const g = GROUPS_AT_INSTALL_CHECKPOINT.find((x) => x.id === groupId);
+  const priorState = cCaseState[groupId];
+  cCaseState[groupId] = "resolved";
+
+  let pathNote = "";
+  if (groupId === "group-07") {
+    if (priorState === "learner_yes") pathNote = "sau khi AI tự gửi check-in và learner xác nhận cần trợ giúp";
+    else if (priorState === "learner_no") pathNote = "sau khi learner phản hồi không cần hỗ trợ nhưng coach vẫn chọn can thiệp";
+    else if (priorState === "undone") pathNote = "sau khi coach thu hồi check-in AI đã tự gửi";
+    else pathNote = "trong khi check-in AI vẫn đang chờ phản hồi";
+  } else if (groupId === "group-09") {
+    pathNote = "sau khi AI Ask/chuyển case vì learner đã chủ động yêu cầu trợ giúp, không phải AI tự trả lời";
+  } else {
+    pathNote = "dù AI đánh giá tín hiệu bình thường và không chủ động hành động (coach can thiệp thủ công)";
+  }
+
+  addActivityEntry("coach_decision", groupId, `Coach chọn "${RESULT_LABELS[result]}" cho ${g.name} (${pathNote}).`);
+
+  const summary = document.getElementById("c-result-summary");
+  summary.className = "result-summary" + (result === "dismiss" ? " dismiss" : "");
+  summary.innerHTML = `
+    <strong>${RESULT_LABELS[result]}</strong>
+    Coach đã chọn "<strong>${RESULT_LABELS[result]}</strong>" cho ${g.name}, ${pathNote}.
+    Toàn bộ hành động của AI và quyết định của coach cho case này đã được ghi vào nhật ký (audit log).
+  `;
+  document.getElementById("c-state-case").classList.add("hidden");
+  document.getElementById("c-state-result").classList.remove("hidden");
+}
+
+document.getElementById("c-back-to-context").addEventListener("click", () => {
+  document.getElementById("c-state-case").classList.add("hidden");
+  document.getElementById("c-state-context").classList.remove("hidden");
+  renderActivityFeed();
+});
+
+document.getElementById("c-result-back").addEventListener("click", () => {
+  document.getElementById("c-state-result").classList.add("hidden");
+  document.getElementById("c-state-case").classList.remove("hidden");
+  renderCaseC(cOpenCaseGroupId);
+});
+
+function resetOptionC() {
+  cActivityLog = getInitialProactiveLog();
+  cActivityCounter = 100;
+  cCaseState = { "group-07": "sent", "group-09": "escalated", "group-03": "monitored" };
+  cOptOutGroups = new Set();
+  cOpenCaseGroupId = null;
+  document.getElementById("c-pause-toggle").checked = false;
+  document.getElementById("c-state-result").classList.add("hidden");
+  document.getElementById("c-state-case").classList.add("hidden");
+  document.getElementById("c-state-context").classList.remove("hidden");
+  renderPolicyPanel();
+  renderActivityFeed();
+}
+
 // ---------- Init ----------
 renderClassBanner();
 renderCheckpointList();
 renderQueue();
+resetOptionC();
 switchTab("A");

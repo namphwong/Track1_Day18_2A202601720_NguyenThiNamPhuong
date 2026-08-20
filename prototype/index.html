@@ -24,6 +24,7 @@
     <nav class="tab-bar">
       <button class="tab-btn active" data-tab="A" id="tab-btn-A">Option A — Coach Query</button>
       <button class="tab-btn" data-tab="B" id="tab-btn-B">Option B — AI Review Queue</button>
+      <button class="tab-btn" data-tab="C" id="tab-btn-C">Option C — Proactive Agent</button>
       <button class="reset-btn" id="global-reset">↺ Reset về common context</button>
     </nav>
   </header>
@@ -103,6 +104,78 @@
         <h2>3. Quyết định đã ghi nhận</h2>
         <div id="b-result-summary" class="result-summary"></div>
         <button class="link-btn" id="b-result-back">← Quay lại case</button>
+      </div>
+    </section>
+
+    <!-- ============= OPTION C ============= -->
+    <section id="panel-C" class="option-panel hidden">
+      <p class="mechanism-note">
+        <strong>Cơ chế Option C:</strong> AI được phép <strong>tự hành động (Act)</strong> với check-in rủi ro thấp, có thể
+        thu hồi, trong giới hạn policy — kể cả <strong>trước khi bạn mở tab này</strong>. Khi learner đã chủ động lên tiếng
+        hoặc evidence mâu thuẫn, AI <strong>không tự trả lời</strong> mà chuyển thẳng cho bạn (Ask). AI không bao giờ tự
+        đóng case của một learner cụ thể — chỉ bạn mới được đóng case đó.
+      </p>
+
+      <!-- State C1: Common context — policy + audit log những gì AI đã tự làm -->
+      <div id="c-state-context" class="state-block">
+        <h2>1. Policy hiện tại &amp; nhật ký hành động của AI</h2>
+        <div class="policy-panel">
+          <div class="policy-rule policy-rule-act">
+            <strong>AI được tự Act khi:</strong>
+            <span id="c-policy-act-rule"></span>
+          </div>
+          <div class="policy-rule policy-rule-ask">
+            <strong>AI luôn Ask / chuyển coach khi:</strong>
+            <span id="c-policy-ask-rule"></span>
+          </div>
+        </div>
+        <ul class="guardrail-list" id="c-guardrail-list"></ul>
+
+        <label class="toggle-row">
+          <input type="checkbox" id="c-pause-toggle" />
+          Tạm dừng toàn bộ hành động tự động của AI (policy-level stop)
+        </label>
+
+        <h3 class="activity-heading">Nhật ký hành động (audit log) — mới nhất trước</h3>
+        <p class="hint-text">Đây là những gì AI đã tự làm hoặc tự quyết định không làm, trước khi bạn xem qua từng case.</p>
+        <div id="c-activity-list" class="activity-feed"></div>
+      </div>
+
+      <!-- State C2: Critical interaction — case detail, khác nhau theo loại hành động -->
+      <div id="c-state-case" class="state-block hidden">
+        <h2>2. Chi tiết case — <span id="c-case-group-name"></span></h2>
+        <div id="c-ai-action-box" class="ai-action-box"></div>
+        <div id="c-evidence-panel" class="evidence-panel"></div>
+
+        <div id="c-simulate-block" class="simulate-block hidden">
+          <p class="hint-text"><em>Mô phỏng để test (không phải phản hồi thật): learner sẽ trả lời check-in thế nào?</em></p>
+          <div class="simulate-row">
+            <button class="secondary-btn" id="c-sim-yes">Mô phỏng: Learner nói "Cần trợ giúp"</button>
+            <button class="dismiss-btn" id="c-sim-no">Mô phỏng: Learner nói "Không cần, cảm ơn"</button>
+          </div>
+        </div>
+
+        <div id="c-post-sim-note" class="case-note hidden"></div>
+
+        <div id="c-manual-actions" class="case-actions hidden">
+          <button class="primary-btn" data-result="support_now" id="c-support-now">Hỗ trợ ngay</button>
+          <button class="secondary-btn" data-result="schedule" id="c-schedule">Lên lịch / đưa vào queue</button>
+          <button class="dismiss-btn" data-result="dismiss" id="c-dismiss">Bỏ qua — chưa đủ evidence</button>
+        </div>
+
+        <label class="toggle-row" id="c-optout-row">
+          <input type="checkbox" id="c-optout-toggle" />
+          Tắt hành động/theo dõi chủ động của AI cho nhóm này
+        </label>
+
+        <button class="link-btn" id="c-back-to-context">← Quay lại policy &amp; nhật ký</button>
+      </div>
+
+      <!-- State C3: Result -->
+      <div id="c-state-result" class="state-block hidden">
+        <h2>3. Quyết định đã ghi nhận</h2>
+        <div id="c-result-summary" class="result-summary"></div>
+        <button class="link-btn" id="c-result-back">← Quay lại case</button>
       </div>
     </section>
   </main>

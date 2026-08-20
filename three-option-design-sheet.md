@@ -48,6 +48,8 @@ Ba option được chọn không nhằm tạo một option “tệ” để hai 
 | Recovery path | Coach có thể quay lại, sửa quyết định và reset về common context |
 | Prototype scope | 2–3 trạng thái: Common Context → Critical Interaction → Result/User Decision |
 
+> **Lưu ý evidence:** Các con số trong Common Scenario ("Nhóm 07", "18 phút", "mở tài liệu nhiều lần") là **fixture thiết kế** để prototype test được, lấy cảm hứng từ câu chuyện của PN3 (Lab Coach kể một learner — số ít, không phải một nhóm — kẹt ở cài đặt môi trường trong khi các nhóm khác đã sang checkpoint mới). Các con số cụ thể này không xuất hiện trong transcript Day 17 gốc; không dùng chúng như bằng chứng evidence khi trình bày CP1.
+
 ## 4. Những thứ được phép khác
 
 | Thành phần | Option A | Option B | Option C |
@@ -80,17 +82,9 @@ Nếu coach được quyền chủ động chọn phạm vi và yêu cầu AI t�
 - AI không tự xếp learner vào danh sách ưu tiên toàn lớp và không liên hệ learner.
 - Coach chịu trách nhiệm quyết định ai cần hỗ trợ và hành động nào phù hợp.
 
-### Giá trị có thể có
+### Trade-off
 
-- Ít automation surprise.
-- Phù hợp khi coach không tin tín hiệu tự động hoặc cần kiểm soát cao.
-- AI hỗ trợ đúng lúc coach có nhu cầu, không tạo thêm queue nền.
-
-### Rủi ro và trade-off
-
-- Coach vẫn phải nhớ kiểm tra.
-- Tốn thao tác khi lớp đông.
-- Những learner ngoài phạm vi coach chọn có thể tiếp tục bị bỏ sót.
+Cách này có thể ít gây bất ngờ do AI tự hành động, vì AI chỉ chạy khi coach yêu cầu — phù hợp nếu coach chưa tin tín hiệu tự động hoặc muốn giữ kiểm soát cao. Đổi lại, coach vẫn phải tự nhớ đi kiểm tra, tốn thêm thao tác khi lớp đông, và những learner ngoài phạm vi coach chọn có thể tiếp tục bị bỏ sót.
 
 ## 6. Option B — AI Review Queue / Coach Approves
 
@@ -112,17 +106,9 @@ Nếu AI chủ động gom các tín hiệu rời rạc thành một queue có e
 - Coach kiểm chứng evidence và quyết định cuối.
 - Feedback dismiss/chỉnh priority không tự động được coi là ground truth nếu coach chưa xác nhận lý do.
 
-### Giá trị có thể có
+### Trade-off
 
-- Độ phủ cao hơn Option A.
-- Coach không phải nhớ từng checkpoint cần kiểm tra.
-- Evidence và uncertainty giúp coach không nhầm score với kết luận chắc chắn.
-
-### Rủi ro và trade-off
-
-- Queue có thể tạo thêm việc và alert fatigue.
-- False positive làm coach mất niềm tin.
-- Nếu coach đã biết ai cần giúp nhưng thiếu thời gian, queue chỉ trình bày lại vấn đề.
+Kỳ vọng là độ phủ cao hơn Option A vì coach không phải tự nhớ kiểm tra từng checkpoint, và việc luôn kèm evidence/uncertainty giúp coach không nhầm priority AI đề xuất với một kết luận chắc chắn. Nhưng đây vẫn là kỳ vọng chưa test: queue có thể tạo thêm việc thay vì giảm việc (alert fatigue), false positive có thể làm coach mất niềm tin, và nếu coach đã biết ai cần giúp nhưng chỉ thiếu thời gian thì queue chỉ đang trình bày lại vấn đề cũ.
 
 ## 7. Option C — Proactive Support Agent with Guardrails
 
@@ -145,18 +131,9 @@ Nếu AI được phép chủ động xử lý các trường hợp rủi ro th�
 - Coach đặt giới hạn, xem audit log và có quyền dừng/undo.
 - Learner có quyền từ chối, dismiss và không nhận check-in tiếp trong phiên.
 
-### Giá trị có thể có
+### Trade-off
 
-- Phản ứng nhanh hơn khi coach đang bận.
-- Giảm số case coach phải duyệt thủ công.
-- Có thể xác nhận trực tiếp nhu cầu trước khi dùng thời gian coach.
-
-### Rủi ro và trade-off
-
-- Learner có thể cảm thấy bị theo dõi hoặc bị gắn nhãn “yếu”.
-- False positive tạo gián đoạn và giảm niềm tin.
-- Policy sai có thể khiến AI hành động quá mức.
-- Cần recovery, audit log và opt-out rõ ràng.
+Ý tưởng là phản ứng nhanh hơn khi coach đang bận, giảm số case coach phải tự duyệt, và xác nhận trực tiếp nhu cầu của learner trước khi dùng thời gian coach — nhưng đây hoàn toàn là kỳ vọng thiết kế, chưa có prototype để kiểm chứng. Rủi ro rõ nhất: learner có thể thấy bị theo dõi hoặc bị gắn nhãn "yếu", false positive gây gián đoạn và giảm niềm tin, chính sách đặt sai có thể khiến AI hành động quá mức — nên cần đường recovery, audit log và opt-out rõ ràng ngay từ đầu.
 
 ## 8. Distance Check — kiểm tra khoảng cách giữa A/B/C
 
@@ -170,7 +147,7 @@ Option B dừng ở đề xuất: AI không liên hệ learner nếu chưa có c
 
 ### A khác C vì
 
-Option A ưu tiên quyền kiểm soát và tránh automation surprise, đổi lại độ phủ phụ thuộc hoàn toàn vào sự chú ý của coach. Option C ưu tiên tốc độ và độ phủ, đổi lại rủi ro false positive, riêng tư và mất quyền tự quyết cao hơn.
+Option A ưu tiên quyền kiểm soát và tránh việc AI tự hành động ngoài dự kiến, đổi lại độ phủ phụ thuộc hoàn toàn vào sự chú ý của coach. Option C ưu tiên tốc độ và độ phủ, đổi lại rủi ro false positive, riêng tư và mất quyền tự quyết cao hơn.
 
 ### Kiểm tra không dùng khác biệt bề mặt
 
